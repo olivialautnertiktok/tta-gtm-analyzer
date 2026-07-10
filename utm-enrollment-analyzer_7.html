@@ -1,0 +1,2877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acquisition and Retention × Content Enrollment Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#0B0D10;
+    --surface:#14171C;
+    --surface-2:#1B1F26;
+    --surface-3:#20242C;
+    --line:#262B33;
+    --line-soft:#1E222A;
+    --text:#EDEFF2;
+    --text-dim:#8991A0;
+    --text-faint:#565D69;
+    --cyan:#2EE6D6;
+    --magenta:#FF3D77;
+    --gold:#FFB84D;
+    --green:#5FE0A0;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:40px 24px 80px;
+  }
+
+  /* ---------- Header ---------- */
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--cyan);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .eyebrow::before{
+    content:'';
+    width:7px;height:7px;border-radius:2px;
+    background:linear-gradient(135deg,var(--cyan),var(--magenta));
+    display:inline-block;
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:clamp(26px,4vw,38px);
+    line-height:1.12;
+    letter-spacing:-.01em;
+    margin:0 0 10px;
+    max-width:820px;
+  }
+  .subtitle{
+    color:var(--text-dim);
+    font-size:15px;
+    max-width:680px;
+    margin:0 0 32px;
+  }
+
+  /* ---------- Section shells ---------- */
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:22px 24px;
+    margin-bottom:18px;
+  }
+  .panel-head{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .step-num{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--ink);
+    background:var(--cyan);
+    width:20px;height:20px;
+    border-radius:5px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    flex:none;
+  }
+  .panel-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:15px;
+    letter-spacing:.01em;
+  }
+  .panel-hint{
+    color:var(--text-faint);
+    font-size:12.5px;
+    margin-left:auto;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .tool-desc{
+    color:var(--text-dim);
+    font-size:13.5px;
+    line-height:1.6;
+    margin:-4px 0 20px;
+    max-width:760px;
+  }
+
+  /* ---------- Upload dropzones ---------- */
+  .upload-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  @media (max-width:720px){ .upload-grid{grid-template-columns:1fr;} }
+  .dropzone{
+    border:1.5px dashed var(--line);
+    border-radius:8px;
+    padding:20px;
+    background:var(--surface-2);
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+    position:relative;
+  }
+  .dropzone:hover{ border-color:var(--text-faint); }
+  .dropzone.drag{ border-color:var(--cyan); background:var(--surface-3); }
+  .dropzone.loaded{ border-style:solid; border-color:var(--green); }
+  .dropzone.error{ border-style:solid; border-color:var(--magenta); }
+  .dz-label{
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    font-family:'JetBrains Mono',monospace;
+    margin-bottom:6px;
+  }
+  .dz-title{
+    font-weight:600;
+    font-size:14.5px;
+    margin-bottom:4px;
+  }
+  .dz-status{
+    font-size:12.5px;
+    color:var(--text-dim);
+  }
+  .dz-status.ok{ color:var(--green); }
+  .dz-status.err{ color:var(--magenta); }
+  .dz-icon{
+    float:right;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--text-faint);
+    border:1px solid var(--line);
+    padding:3px 8px;
+    border-radius:5px;
+  }
+  .dropzone input[type=file]{ display:none; }
+
+  .base-card{
+    border:1px solid var(--green);
+    border-radius:8px;
+    padding:20px;
+    background:var(--surface-2);
+  }
+  .base-updated{
+    font-weight:600;
+    font-size:14.5px;
+    margin:2px 0 4px;
+  }
+  .base-coverage{
+    font-size:12px;
+    color:var(--text-dim);
+    margin-bottom:14px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .base-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .btn-sm{ padding:8px 12px; font-size:12px; }
+  .btn-ghost.subtle{ color:var(--text-faint); border-color:var(--line-soft); }
+  .base-batch-status{
+    font-size:12px;
+    color:var(--text-faint);
+    font-family:'JetBrains Mono',monospace;
+    margin-top:10px;
+  }
+  .checklist-item{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    font-weight:600;
+    font-size:14.5px;
+    margin:2px 0 8px;
+  }
+  .checklist-item .chk{
+    width:18px;height:18px;
+    border-radius:5px;
+    background:var(--green);
+    color:var(--ink);
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-size:12px;
+    font-weight:700;
+    flex:none;
+  }
+  .base-note{
+    font-size:11.5px;
+    color:var(--text-faint);
+    margin:-2px 0 14px;
+    line-height:1.5;
+  }
+
+  /* ---------- Tool tabs ---------- */
+  .tool-tabs{
+    display:flex;
+    gap:10px;
+    margin:30px 0 18px;
+  }
+  @media (max-width:640px){ .tool-tabs{flex-direction:column;} }
+  .tool-tab{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap:11px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 18px;
+    cursor:pointer;
+    text-align:left;
+    font-family:'Inter',sans-serif;
+    color:var(--text-dim);
+    font-size:13.5px;
+    font-weight:500;
+    transition:border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .tool-tab:hover{ border-color:var(--text-faint); color:var(--text); }
+  .tool-tab.active{ border-color:var(--cyan); color:var(--text); background:var(--surface-2); }
+  .tt-badge{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    width:26px;height:26px;
+    border-radius:7px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg,var(--cyan),var(--magenta));
+    color:var(--ink);
+    flex:none;
+  }
+  .tool-section{ display:none; }
+  .tool-section.active{ display:block; }
+
+  /* ---------- Period controls ---------- */
+  .seg{
+    display:inline-flex;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:3px;
+    gap:2px;
+    margin-bottom:14px;
+  }
+  .seg button{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    font-weight:500;
+    padding:7px 14px;
+    border-radius:6px;
+    border:none;
+    background:transparent;
+    color:var(--text-dim);
+    cursor:pointer;
+  }
+  .seg button.active{
+    background:var(--surface-3);
+    color:var(--text);
+    box-shadow:inset 0 0 0 1px var(--line);
+  }
+  .period-body select, .period-body input[type=date],
+  .combo-row select, .combo-row input[type=text]{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13.5px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:9px 12px;
+    border-radius:7px;
+    outline:none;
+  }
+  .period-body select:focus, .period-body input[type=date]:focus,
+  .combo-row select:focus, .combo-row input[type=text]:focus{ border-color:var(--cyan); }
+  .period-row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .period-note{
+    font-size:12.5px;
+    color:var(--text-faint);
+    margin-top:10px;
+  }
+
+  .combo-row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:16px; }
+  .combo-row input[type=text]{ min-width:240px; flex:1; }
+  .combo-row input:disabled{ opacity:.35; cursor:not-allowed; }
+  .combo-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--text-faint);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    margin-right:-4px;
+  }
+
+  details.advanced{ margin-top:16px; }
+  details.advanced summary{
+    cursor:pointer;
+    font-size:12.5px;
+    color:var(--text-dim);
+    font-family:'JetBrains Mono',monospace;
+    letter-spacing:.03em;
+  }
+  .adv-row{
+    display:flex;
+    gap:24px;
+    flex-wrap:wrap;
+    margin-top:14px;
+    align-items:center;
+  }
+  .adv-field label{
+    display:block;
+    font-size:11.5px;
+    color:var(--text-faint);
+    margin-bottom:6px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .adv-field input[type=number]{
+    width:80px;
+    font-family:'JetBrains Mono',monospace;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:6px;
+  }
+  .toggle-field{ display:flex; align-items:center; gap:9px; }
+  .toggle{
+    width:36px;height:20px;
+    background:var(--surface-3);
+    border:1px solid var(--line);
+    border-radius:20px;
+    position:relative;
+    cursor:pointer;
+    flex:none;
+  }
+  .toggle.on{ background:linear-gradient(90deg,var(--cyan),var(--magenta)); }
+  .toggle .knob{
+    width:14px;height:14px;
+    background:var(--text);
+    border-radius:50%;
+    position:absolute;
+    top:2px;left:2px;
+    transition:left .15s ease;
+  }
+  .toggle.on .knob{ left:18px; background:#0B0D10; }
+  .toggle-field span{ font-size:13px; color:var(--text-dim); }
+
+  /* ---------- Run button ---------- */
+  .run-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    margin-top:20px;
+    padding-top:18px;
+    border-top:1px solid var(--line-soft);
+    flex-wrap:wrap;
+  }
+  .btn-run{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14.5px;
+    color:var(--ink);
+    background:linear-gradient(90deg,var(--cyan),var(--green) 120%);
+    border:none;
+    padding:12px 22px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:transform .1s ease, opacity .15s ease;
+  }
+  .btn-run:hover:not(:disabled){ transform:translateY(-1px); }
+  .btn-run:disabled{ opacity:.35; cursor:not-allowed; }
+  .btn-ghost{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    font-weight:500;
+    color:var(--text-dim);
+    background:transparent;
+    border:1px solid var(--line);
+    padding:11px 16px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .btn-ghost:hover{ color:var(--text); border-color:var(--text-faint); }
+  .run-status{
+    font-size:12.5px;
+    color:var(--text-faint);
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  /* ---------- Results ---------- */
+  .results-block{ display:none; margin-top:40px; }
+  .results-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-bottom:20px;
+    padding-bottom:16px;
+    border-bottom:1px solid var(--line);
+  }
+  .results-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:19px;
+  }
+  .results-title .period-chip{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--cyan);
+    border:1px solid rgba(46,230,214,.35);
+    background:rgba(46,230,214,.08);
+    padding:3px 9px;
+    border-radius:20px;
+    margin-left:10px;
+    vertical-align:middle;
+  }
+  .results-title .filter-chip{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--magenta);
+    border:1px solid rgba(255,61,119,.35);
+    background:rgba(255,61,119,.08);
+    padding:3px 9px;
+    border-radius:20px;
+    margin-left:8px;
+    vertical-align:middle;
+  }
+
+  .kpi-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+    margin-bottom:28px;
+  }
+  @media (max-width:900px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:520px){ .kpi-grid{grid-template-columns:1fr;} }
+  .kpi-card, .split-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 22px;
+    position:relative;
+    overflow:hidden;
+  }
+  .kpi-card::after{
+    content:'';
+    position:absolute;
+    right:-30px;top:-30px;
+    width:90px;height:90px;
+    border-radius:50%;
+    background:radial-gradient(circle,rgba(46,230,214,.10),transparent 70%);
+  }
+  .kpi-label, .split-kicker{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.09em;
+    color:var(--text-faint);
+    margin-bottom:10px;
+  }
+  .kpi-value, .split-value{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:34px;
+    letter-spacing:-.01em;
+  }
+  .kpi-value .unit{
+    font-size:15px;
+    color:var(--text-dim);
+    font-weight:500;
+    margin-left:4px;
+  }
+  .kpi-sub, .split-sub{
+    font-size:12px;
+    color:var(--text-dim);
+    margin-top:8px;
+  }
+
+  .split-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:10px;
+  }
+  @media (max-width:720px){ .split-grid{grid-template-columns:1fr;} }
+  .split-card{ padding-left:24px; }
+  .split-card.new::before, .split-card.retained::before{
+    content:'';
+    position:absolute;
+    left:0;top:0;bottom:0;
+    width:3px;
+  }
+  .split-card.new::before{ background:var(--cyan); }
+  .split-card.retained::before{ background:var(--magenta); }
+
+  .unclassified-note{
+    font-size:12px;
+    color:var(--text-faint);
+    margin:6px 2px 24px;
+    font-family:'JetBrains Mono',monospace;
+    display:none;
+  }
+  .geo-heading{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--text-dim);
+    margin:8px 2px 14px;
+    padding-top:14px;
+    border-top:1px solid var(--line-soft);
+  }
+
+  .lb-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  .lb-grid + .lb-grid{ margin-top:16px; }
+  @media (max-width:900px){ .lb-grid{grid-template-columns:1fr;} }
+  .lb-panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 22px 10px;
+  }
+  .lb-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:14px;
+    gap:10px;
+  }
+  .lb-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+  .lb-sub{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    color:var(--text-faint);
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    text-align:right;
+    flex:none;
+  }
+  .lb-empty{
+    color:var(--text-faint);
+    font-size:13px;
+    padding:20px 0 24px;
+  }
+  .lb-row{
+    display:grid;
+    grid-template-columns:26px 1fr auto;
+    align-items:center;
+    gap:12px;
+    padding:9px 0;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .lb-row:last-child{ border-bottom:none; }
+  .lb-rank{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--text-faint);
+  }
+  .lb-row:nth-child(2) .lb-rank{ color:var(--gold); }
+  .lb-main{ min-width:0; }
+  .lb-name{
+    font-size:13px;
+    font-weight:500;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    margin-bottom:6px;
+  }
+  .lb-bar-track{
+    height:5px;
+    background:var(--surface-3);
+    border-radius:3px;
+    overflow:hidden;
+    margin-bottom:4px;
+  }
+  .lb-bar-fill{
+    height:100%;
+    border-radius:3px;
+    background:linear-gradient(90deg,var(--cyan),var(--magenta));
+  }
+  .lb-vol-track{
+    height:2px;
+    background:transparent;
+    border-radius:2px;
+    overflow:hidden;
+  }
+  .lb-vol-fill{
+    height:100%;
+    border-radius:2px;
+    background:var(--text-faint);
+  }
+  .lb-metrics{
+    text-align:right;
+    flex:none;
+  }
+  .lb-perlearner{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:700;
+    font-size:15px;
+  }
+  .lb-learners{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    color:var(--text-faint);
+  }
+  .lb-ad{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    color:var(--gold);
+    margin-top:2px;
+  }
+
+  /* ---------- Tool A output sections ---------- */
+  .section-heading{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:.01em;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:36px 2px 4px;
+  }
+  .section-heading .sec-num{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    font-weight:700;
+    color:var(--ink);
+    background:var(--cyan);
+    padding:2px 8px;
+    border-radius:5px;
+    flex:none;
+  }
+  .section-heading.vol .sec-num{ background:var(--gold); }
+  .section-heading.geo .sec-num{ background:var(--green); }
+  .section-sub{
+    color:var(--text-dim);
+    font-size:13px;
+    line-height:1.55;
+    max-width:760px;
+    margin:0 2px 16px;
+  }
+
+  /* ---------- Tool C · Ask Anything ---------- */
+  .ask-wrap{ margin-top:6px; }
+  .ask-input{
+    width:100%;
+    background:var(--ink);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    font-size:15px;
+    line-height:1.55;
+    padding:14px 16px;
+    resize:vertical;
+    min-height:78px;
+  }
+  .ask-input:focus{ outline:none; border-color:var(--green); }
+  .ask-input::placeholder{ color:var(--text-faint); }
+  .ask-controls{ display:flex; align-items:center; gap:14px; margin-top:12px; }
+  .ask-examples{ display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+  .ask-chip{
+    font-size:12px;
+    color:var(--text-dim);
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:6px 12px;
+    cursor:pointer;
+    transition:.15s;
+  }
+  .ask-chip:hover{ border-color:var(--green); color:var(--text); }
+
+  .ask-explain{
+    color:var(--text-dim);
+    font-size:13.5px;
+    line-height:1.6;
+    background:var(--surface);
+    border:1px solid var(--line-soft);
+    border-left:3px solid var(--green);
+    border-radius:8px;
+    padding:12px 16px;
+    margin-bottom:18px;
+  }
+  .ask-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:16px;
+    margin:4px 2px 14px;
+  }
+  .ask-scalar{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:42px;
+    color:var(--green);
+    letter-spacing:-.02em;
+  }
+  .ask-scalar-label{ color:var(--text-dim); font-size:13px; margin-top:2px; }
+  .ask-text{ color:var(--text); font-size:14.5px; line-height:1.65; white-space:pre-wrap; }
+
+  .ask-table-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
+  table.ask-table{ border-collapse:collapse; width:100%; font-size:13px; }
+  table.ask-table th{
+    text-align:left;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--text-dim);
+    background:var(--surface-2);
+    padding:10px 14px;
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  table.ask-table td{
+    padding:9px 14px;
+    border-bottom:1px solid var(--line-soft);
+    color:var(--text);
+  }
+  table.ask-table tr:last-child td{ border-bottom:none; }
+  table.ask-table tr:nth-child(even) td{ background:rgba(255,255,255,.015); }
+
+  .ask-code{
+    margin-top:18px;
+    border:1px solid var(--line-soft);
+    border-radius:8px;
+    background:var(--surface);
+  }
+  .ask-code summary{
+    cursor:pointer;
+    padding:10px 14px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;
+    color:var(--text-dim);
+    user-select:none;
+  }
+  .ask-code summary:hover{ color:var(--text); }
+  .ask-code pre{
+    margin:0;
+    padding:0 14px 14px;
+    overflow-x:auto;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    line-height:1.55;
+    color:var(--green);
+    white-space:pre;
+  }
+  .ask-error{
+    color:var(--magenta);
+    font-size:14px;
+    line-height:1.6;
+    background:rgba(255,61,119,.06);
+    border:1px solid rgba(255,61,119,.25);
+    border-radius:8px;
+    padding:14px 16px;
+  }
+  .ask-thinking{ display:inline-flex; align-items:center; gap:8px; color:var(--green); font-size:13px; }
+  .ask-dot{ width:7px; height:7px; border-radius:50%; background:var(--green); animation:askpulse 1s infinite ease-in-out; }
+  @keyframes askpulse{ 0%,100%{opacity:.25;} 50%{opacity:1;} }
+
+  .export-row{
+    display:flex;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:20px;
+  }
+
+  .error-box{
+    border:1px solid rgba(255,61,119,.4);
+    background:rgba(255,61,119,.08);
+    color:#FF87A8;
+    border-radius:8px;
+    padding:12px 14px;
+    font-size:12.5px;
+    margin-top:12px;
+    font-family:'JetBrains Mono',monospace;
+    display:none;
+  }
+
+  footer{
+    margin-top:50px;
+    padding-top:20px;
+    border-top:1px solid var(--line-soft);
+    color:var(--text-faint);
+    font-size:11.5px;
+    font-family:'JetBrains Mono',monospace;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">TikTok Academy · Growth Analytics</div>
+  <h1>Acquisition and Retention × Content Enrollment Analyzer</h1>
+  <p class="subtitle">Registrations are stored once as a shared dataset — open this app from any browser and it's already there. Add new learner batches on top of it whenever you have them. Content enrollments are still uploaded fresh each time you run an analysis.</p>
+
+  <!-- STEP 1: UPLOAD (shared by both tools) -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="step-num">1</span>
+      <span class="panel-title">Upload your data</span>
+      <span class="panel-hint">CSV only · stays in your browser</span>
+    </div>
+    <div class="upload-grid">
+      <div class="dz-slot" id="reg-slot">
+        <!-- shown when no data yet -->
+        <div class="dropzone" id="dz-reg" style="display:none;">
+          <span class="dz-icon">CSV</span>
+          <div class="dz-label">File A</div>
+          <div class="dz-title">User registrations</div>
+          <div class="dz-status" id="dz-reg-status">Upload the all-time historical registrations export once — it'll be saved for everyone who opens this app, on any browser. Click or drop file here.</div>
+          <input type="file" accept=".csv" id="file-reg">
+        </div>
+
+        <!-- shown once data is loaded -->
+        <div class="base-card" id="reg-loaded-card" style="display:none;">
+          <span class="dz-icon" style="border-color:var(--green);color:var(--green);">✓ SAVED</span>
+          <div class="dz-label">File A</div>
+          <div class="dz-title">User registrations — shared base dataset</div>
+          <div class="checklist-item" id="checklist-line"><span class="chk">✓</span> TTA All Learners until —</div>
+          <div class="base-coverage" id="base-coverage-line">—</div>
+          <div class="base-note">Stored once, shared with anyone who opens this app — no names or emails are kept, only learner IDs, registration dates and UTM tags.</div>
+
+          <div class="base-actions" id="base-actions">
+            <button class="btn-ghost btn-sm" id="btn-add-batch">Add new learner batch</button>
+            <button class="btn-ghost btn-sm" id="btn-replace-base">Replace base file</button>
+            <button class="btn-ghost btn-sm subtle" id="btn-clear-base">Clear stored data</button>
+          </div>
+          <div class="base-batch-status" id="base-batch-status"></div>
+          <input type="file" accept=".csv" id="file-batch" style="display:none;">
+          <input type="file" accept=".csv" id="file-replace" style="display:none;">
+        </div>
+      </div>
+      <div class="dropzone" id="dz-enr">
+        <span class="dz-icon">CSV</span>
+        <div class="dz-label">File B</div>
+        <div class="dz-title">Content enrollments</div>
+        <div class="dz-status" id="dz-enr-status">Needs a Users Id column and an enrolled-on date — one row per enrollment. Click or drop file here.</div>
+        <input type="file" accept=".csv" id="file-enr">
+      </div>
+    </div>
+    <div class="error-box" id="upload-error"></div>
+  </div>
+
+  <!-- TOOL TABS -->
+  <div class="tool-tabs" id="tool-tabs">
+    <button class="tool-tab active" data-tool="a"><span class="tt-badge">A</span> Acquisition Channels × Enrollment Depth</button>
+    <button class="tool-tab" data-tool="b"><span class="tt-badge">B</span> New vs Retained Learners</button>
+    <button class="tool-tab" data-tool="c"><span class="tt-badge">C</span> Ask Anything</button>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TOOL A                                                        -->
+  <!-- ============================================================ -->
+  <div class="tool-section active" id="tool-a">
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="step-num">2</span>
+        <span class="panel-title">Set the acquisition period</span>
+        <span class="panel-hint" id="data-range-hint-a">upload File A to see available range</span>
+      </div>
+      <p class="tool-desc">This tool ranks your top acquisition channels — UTM source, medium, content and campaign — by how many pieces of content their learners go on to enroll in, for whatever acquisition window you set below.</p>
+      <div class="period-body">
+        <div class="seg" id="period-seg-a">
+          <button data-type="quarter" class="active">Quarter</button>
+          <button data-type="year">Year</button>
+          <button data-type="month">Month</button>
+          <button data-type="custom">Custom range</button>
+        </div>
+        <div id="period-controls-a" class="period-row">
+          <select disabled><option>Upload File A first</option></select>
+        </div>
+        <div class="period-note">"Learner registered on" is filtered to this window. Content enrollment counts include every enrollment on record for the learners acquired in this window, regardless of when the enrollment happened.</div>
+
+        <details class="advanced">
+          <summary>Advanced settings</summary>
+          <div class="adv-row">
+            <div class="adv-field">
+              <label>Min. learners per channel</label>
+              <input type="number" id="min-learners-a" value="5" min="0">
+            </div>
+            <div class="toggle-field">
+              <div class="toggle on" id="toggle-untagged-a"><div class="knob"></div></div>
+              <span>Include untagged / organic (no UTM) in rankings</span>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="run-row">
+        <button class="btn-run" id="btn-run-a" disabled>Run analysis</button>
+        <button class="btn-ghost" id="btn-reset">Reset session</button>
+        <span class="run-status" id="run-status-a"></span>
+      </div>
+    </div>
+
+    <div class="results-block" id="results-a">
+      <div class="results-head">
+        <div class="results-title">Results <span class="period-chip" id="period-chip-a">—</span></div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Learners acquired</div>
+          <div class="kpi-value" id="kpi-learners">—</div>
+          <div class="kpi-sub" id="kpi-learners-sub"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total content enrollments</div>
+          <div class="kpi-value" id="kpi-enrollments">—</div>
+          <div class="kpi-sub">across all statuses (passed, in-progress, no-show, etc.)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Enrollments / learner</div>
+          <div class="kpi-value" id="kpi-avg">—</div>
+          <div class="kpi-sub" id="kpi-avg-sub"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Ad accounts connected</div>
+          <div class="kpi-value" id="kpi-adaccount">—</div>
+          <div class="kpi-sub" id="kpi-adaccount-sub"></div>
+        </div>
+      </div>
+
+      <div class="section-heading vol"><span class="sec-num">01</span>Quantity · Top 10 by Volume of New Learners Acquired</div>
+      <div class="section-sub">For each UTM dimension, the channels that brought in the most new learners this period — with their corresponding content enrollments per learner shown alongside. Ranked by new learners acquired. The faint under-bar shows relative enrollment-per-learner so you can see which high-volume channels also convert to engagement.</div>
+      <div class="lb-grid">
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Utm Source</span><span class="lb-sub">Top 10 · by new learners</span></div>
+          <div id="lb-vol-source"></div>
+        </div>
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Utm Medium</span><span class="lb-sub">Top 10 · by new learners</span></div>
+          <div id="lb-vol-medium"></div>
+        </div>
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Utm Content</span><span class="lb-sub">Top 10 · by new learners</span></div>
+          <div id="lb-vol-content"></div>
+        </div>
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Utm Campaign</span><span class="lb-sub">Top 10 · by new learners</span></div>
+          <div id="lb-vol-campaign"></div>
+        </div>
+      </div>
+
+      <div class="section-heading"><span class="sec-num">02</span>Quality · Top 10 by Content Enrollment / Learner</div>
+      <div class="section-sub">For each UTM dimension, the channels whose acquired learners go on to enroll in the most content per head. Ranked by content enrollments per learner. The faint under-bar shows relative learner volume so you can spot high-ratio niches vs. high-volume channels.</div>
+      <div class="lb-grid">
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Utm Source</span><span class="lb-sub">Top 10 · by enroll/learner</span></div>
+          <div id="lb-source"></div>
+        </div>
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Utm Medium</span><span class="lb-sub">Top 10 · by enroll/learner</span></div>
+          <div id="lb-medium"></div>
+        </div>
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Utm Content</span><span class="lb-sub">Top 10 · by enroll/learner</span></div>
+          <div id="lb-content"></div>
+        </div>
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Utm Campaign</span><span class="lb-sub">Top 10 · by enroll/learner</span></div>
+          <div id="lb-campaign"></div>
+        </div>
+      </div>
+
+      <div class="section-heading geo"><span class="sec-num">03</span>Top 10 Country Analysis &amp; Regional Breakdown</div>
+      <div class="section-sub">Where the learners acquired in this period are located. Top 10 countries by learners acquired, alongside the full split across the five macro-regions (North America, Europe, Middle East &amp; Africa, Asia-Pacific, and LATAM).</div>
+      <div class="lb-grid">
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Top Countries</span><span class="lb-sub">Top 10 · by learners</span></div>
+          <div id="lb-a-countries"></div>
+        </div>
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Regional Breakdown</span><span class="lb-sub">by learners</span></div>
+          <div id="lb-a-regions"></div>
+        </div>
+      </div>
+
+      <div class="export-row">
+        <button class="btn-ghost" id="btn-export-a">Download report (CSV)</button>
+        <button class="btn-ghost" id="btn-pdf-a">Export report (PDF)</button>
+        <button class="btn-ghost" id="btn-copy-a">Copy CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TOOL B                                                        -->
+  <!-- ============================================================ -->
+  <div class="tool-section" id="tool-b">
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="step-num">2</span>
+        <span class="panel-title">Set the content enrollment period</span>
+        <span class="panel-hint" id="data-range-hint-b">upload File B to see available range</span>
+      </div>
+      <p class="tool-desc">This tool looks at everyone who enrolled in content during a chosen window and splits them into <strong style="color:var(--text)">New</strong> learners — registered inside that same window — and <strong style="color:var(--text)">Retained</strong> learners — registered earlier and re-engaging. Optionally narrow it to a single UTM source, medium, content tag or campaign.</p>
+
+      <div class="period-body">
+        <div class="seg" id="period-seg-b">
+          <button data-type="quarter" class="active">Quarter</button>
+          <button data-type="year">Year</button>
+          <button data-type="month">Month</button>
+          <button data-type="custom">Custom range</button>
+        </div>
+        <div id="period-controls-b" class="period-row">
+          <select disabled><option>Upload File B first</option></select>
+        </div>
+        <div class="period-note">Filters on "Enrollments Enrolled On." A learner counts once per group even if they enrolled in several things during the window.</div>
+
+        <div class="combo-row">
+          <span class="combo-label">UTM filter</span>
+          <select id="utm-dim-b">
+            <option value="">All learners (no UTM filter)</option>
+            <option value="source">Utm Source</option>
+            <option value="medium">Utm Medium</option>
+            <option value="content">Utm Content</option>
+            <option value="campaign">Utm Campaign</option>
+          </select>
+          <input type="text" id="utm-value-b" list="utm-values-b" placeholder="Type or choose a value…" disabled>
+          <datalist id="utm-values-b"></datalist>
+        </div>
+      </div>
+
+      <div class="run-row">
+        <button class="btn-run" id="btn-run-b" disabled>Run analysis</button>
+        <span class="run-status" id="run-status-b"></span>
+      </div>
+    </div>
+
+    <div class="results-block" id="results-b">
+      <div class="results-head">
+        <div class="results-title">Results
+          <span class="period-chip" id="period-chip-b">—</span>
+          <span class="filter-chip" id="filter-chip-b">—</span>
+        </div>
+      </div>
+
+      <div class="split-grid">
+        <div class="split-card new">
+          <div class="split-kicker">New learners</div>
+          <div class="split-value" id="kpi-new-count">—</div>
+          <div class="split-sub" id="kpi-new-sub"></div>
+          <div class="split-sub" id="kpi-new-adaccount"></div>
+        </div>
+        <div class="split-card retained">
+          <div class="split-kicker">Retained learners</div>
+          <div class="split-value" id="kpi-retained-count">—</div>
+          <div class="split-sub" id="kpi-retained-sub"></div>
+          <div class="split-sub" id="kpi-retained-adaccount"></div>
+        </div>
+      </div>
+      <div class="unclassified-note" id="unclassified-note"></div>
+
+      <div class="lb-grid">
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Top content · New</span><span class="lb-sub">Top 10 · by enrollments</span></div>
+          <div id="lb-new-content"></div>
+        </div>
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Top content · Retained</span><span class="lb-sub">Top 10 · re-engagement</span></div>
+          <div id="lb-retained-content"></div>
+        </div>
+      </div>
+
+      <div class="geo-heading">Geo analysis</div>
+      <div class="lb-grid">
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Top countries · New</span><span class="lb-sub">Top 10 · by learners</span></div>
+          <div id="lb-new-countries"></div>
+        </div>
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Top countries · Retained</span><span class="lb-sub">Top 10 · by learners</span></div>
+          <div id="lb-retained-countries"></div>
+        </div>
+      </div>
+      <div class="lb-grid">
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Regional split · New</span><span class="lb-sub">% of group</span></div>
+          <div id="lb-new-regions"></div>
+        </div>
+        <div class="lb-panel">
+          <div class="lb-head"><span class="lb-title">Regional split · Retained</span><span class="lb-sub">% of group</span></div>
+          <div id="lb-retained-regions"></div>
+        </div>
+      </div>
+
+      <div class="export-row">
+        <button class="btn-ghost" id="btn-export-b">Download report (CSV)</button>
+        <button class="btn-ghost" id="btn-pdf-b">Export report (PDF)</button>
+        <button class="btn-ghost" id="btn-copy-b">Copy CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TOOL C  — Ask Anything                                        -->
+  <!-- ============================================================ -->
+  <div class="tool-section" id="tool-c">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="step-num">2</span>
+        <span class="panel-title">Ask a question about your data</span>
+        <span class="panel-hint" id="data-range-hint-c">upload files to enable</span>
+      </div>
+      <p class="tool-desc">Ask anything about your registrations and enrollments in plain English. Your question is turned into an analysis that runs <strong style="color:var(--text)">entirely in your browser</strong> against the loaded data — raw emails never leave your device. Ideal for one-off cross-tabs the fixed tools don't cover.</p>
+
+      <div class="ask-wrap">
+        <textarea id="ask-input" class="ask-input" rows="3" placeholder="e.g. Which utm_campaign brought the most learners from Brazil, and what is their average content enrollments per learner?"></textarea>
+        <div class="ask-controls">
+          <button class="btn-run" id="btn-ask" disabled>Ask</button>
+          <span class="run-status" id="ask-status"></span>
+        </div>
+        <div class="ask-examples" id="ask-examples">
+          <span class="ask-chip">Top 5 countries by ad-account connection rate (min 20 learners)</span>
+          <span class="ask-chip">Compare enrollments per learner: paid vs organic sources</span>
+          <span class="ask-chip">How many learners registered each month in 2024?</span>
+          <span class="ask-chip">Which content activities are most enrolled by learners from Europe?</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="results-block" id="results-c">
+      <div class="results-head">
+        <div class="results-title">Answer <span class="period-chip" id="ask-chip-q">—</span></div>
+      </div>
+      <div id="ask-answer"></div>
+      <div class="export-row" id="ask-export-row" style="display:none;">
+        <button class="btn-ghost" id="btn-export-c">Download result (CSV)</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Runs entirely in your browser — no files are uploaded to a server.</span>
+    <span>Re-upload fresh exports each quarter to rerun.</span>
+  </footer>
+</div>
+
+<script>
+/* ============================= helpers ============================= */
+function normalizeHeader(h){ return (h||'').trim().toLowerCase().replace(/[^a-z0-9]/g,''); }
+
+const REG_ALIASES = {
+  id: ['usersid'],
+  createdOn: ['userscreatedon','usersregisteredat','usersregisteredon','createdon','registeredon'],
+  source: ['utmsource'],
+  medium: ['utmmedium'],
+  content: ['utmcontent'],
+  campaign: ['utmcampaign'],
+  adAccount: ['tiktokadaccountids','tiktokadaccountid'],
+  country: ['userscountry'],
+};
+const ENR_ALIASES = {
+  id: ['usersid'],
+  enrolledOn: ['enrollmentsenrolledon','enrolledon'],
+  activity: ['activitiesname','activityname'],
+};
+const DIM_LABELS = {source:'Utm Source', medium:'Utm Medium', content:'Utm Content', campaign:'Utm Campaign'};
+
+/* Exclude internal / staff accounts by email domain. Any CSV row that contains one of
+   these domains in ANY column is dropped before it enters the analysis or the exports,
+   so it never appears in either tool's results or CSV downloads. */
+const EXCLUDED_EMAIL_DOMAINS = ['@bytedance.com','@tiktok.com'];
+function valueHasExcludedDomain(v){
+  if(v==null) return false;
+  const low = String(v).toLowerCase();
+  return EXCLUDED_EMAIL_DOMAINS.some(d=>low.includes(d));
+}
+function rawRowExcluded(rowObj){
+  for(const k in rowObj){ if(valueHasExcludedDomain(rowObj[k])) return true; }
+  return false;
+}
+function idExcluded(id){ return valueHasExcludedDomain(id); }
+
+const COUNTRY_REGION = {
+  'afghanistan':'Asia-Pacific',
+  'albania':'Europe',
+  'algeria':'Middle East & Africa',
+  'american samoa':'Asia-Pacific',
+  'andorra':'Europe',
+  'angola':'Middle East & Africa',
+  'anguilla':'Latin America',
+  'antigua and barbuda':'Latin America',
+  'argentina':'Latin America',
+  'armenia':'Middle East & Africa',
+  'aruba':'Latin America',
+  'australia':'Asia-Pacific',
+  'austria':'Europe',
+  'azerbaijan':'Middle East & Africa',
+  'bahamas':'Latin America',
+  'bahrain':'Middle East & Africa',
+  'bangladesh':'Asia-Pacific',
+  'barbados':'Latin America',
+  'belarus':'Europe',
+  'belgium':'Europe',
+  'belize':'Latin America',
+  'benin':'Middle East & Africa',
+  'bermuda':'North America',
+  'bhutan':'Asia-Pacific',
+  'bolivia':'Latin America',
+  'bolivia, plurinational state of':'Latin America',
+  'bosnia and herzegovina':'Europe',
+  'botswana':'Middle East & Africa',
+  'bouvet island':'Europe',
+  'brazil':'Latin America',
+  'british indian ocean territory':'Middle East & Africa',
+  'brunei':'Asia-Pacific',
+  'brunei darussalam':'Asia-Pacific',
+  'bulgaria':'Europe',
+  'burkina faso':'Middle East & Africa',
+  'burundi':'Middle East & Africa',
+  'cambodia':'Asia-Pacific',
+  'cameroon':'Middle East & Africa',
+  'canada':'North America',
+  'cape verde':'Middle East & Africa',
+  'cayman islands':'Latin America',
+  'central african republic':'Middle East & Africa',
+  'chad':'Middle East & Africa',
+  'chile':'Latin America',
+  'china':'Asia-Pacific',
+  'christmas island':'Asia-Pacific',
+  'colombia':'Latin America',
+  'comoros':'Middle East & Africa',
+  'congo':'Middle East & Africa',
+  'congo, the democratic republic of the':'Middle East & Africa',
+  'costa rica':'Latin America',
+  'cote d\'ivoire':'Middle East & Africa',
+  'croatia':'Europe',
+  'cuba':'Latin America',
+  'cyprus':'Europe',
+  'czech republic':'Europe',
+  'czechia':'Europe',
+  'côte d\'ivoire':'Middle East & Africa',
+  'democratic republic of the congo':'Middle East & Africa',
+  'denmark':'Europe',
+  'djibouti':'Middle East & Africa',
+  'dominica':'Latin America',
+  'dominican republic':'Latin America',
+  'dr congo':'Middle East & Africa',
+  'ecuador':'Latin America',
+  'egypt':'Middle East & Africa',
+  'el salvador':'Latin America',
+  'equatorial guinea':'Middle East & Africa',
+  'eritrea':'Middle East & Africa',
+  'estonia':'Europe',
+  'eswatini':'Middle East & Africa',
+  'ethiopia':'Middle East & Africa',
+  'falkland islands (malvinas)':'Latin America',
+  'faroe islands':'Europe',
+  'fiji':'Asia-Pacific',
+  'finland':'Europe',
+  'france':'Europe',
+  'french guiana':'Latin America',
+  'french polynesia':'Asia-Pacific',
+  'french southern territories':'Middle East & Africa',
+  'gabon':'Middle East & Africa',
+  'gambia':'Middle East & Africa',
+  'georgia':'Middle East & Africa',
+  'germany':'Europe',
+  'ghana':'Middle East & Africa',
+  'gibraltar':'Europe',
+  'greece':'Europe',
+  'greenland':'North America',
+  'grenada':'Latin America',
+  'guadeloupe':'Latin America',
+  'guam':'Asia-Pacific',
+  'guatemala':'Latin America',
+  'guernsey':'Europe',
+  'guinea':'Middle East & Africa',
+  'guinea-bissau':'Middle East & Africa',
+  'guyana':'Latin America',
+  'haiti':'Latin America',
+  'honduras':'Latin America',
+  'hong kong':'Asia-Pacific',
+  'hungary':'Europe',
+  'iceland':'Europe',
+  'india':'Asia-Pacific',
+  'indonesia':'Asia-Pacific',
+  'iran':'Middle East & Africa',
+  'iran, islamic republic of':'Middle East & Africa',
+  'iraq':'Middle East & Africa',
+  'ireland':'Europe',
+  'isle of man':'Europe',
+  'israel':'Middle East & Africa',
+  'italy':'Europe',
+  'ivory coast':'Middle East & Africa',
+  'jamaica':'Latin America',
+  'japan':'Asia-Pacific',
+  'jersey':'Europe',
+  'jordan':'Middle East & Africa',
+  'kazakhstan':'Asia-Pacific',
+  'kenya':'Middle East & Africa',
+  'kiribati':'Asia-Pacific',
+  'korea, democratic people\'s republic of':'Asia-Pacific',
+  'korea, north':'Asia-Pacific',
+  'korea, republic of':'Asia-Pacific',
+  'korea, south':'Asia-Pacific',
+  'kuwait':'Middle East & Africa',
+  'kyrgyzstan':'Asia-Pacific',
+  'lao people\'s democratic republic':'Asia-Pacific',
+  'laos':'Asia-Pacific',
+  'latvia':'Europe',
+  'lebanon':'Middle East & Africa',
+  'lesotho':'Middle East & Africa',
+  'liberia':'Middle East & Africa',
+  'libya':'Middle East & Africa',
+  'liechtenstein':'Europe',
+  'lithuania':'Europe',
+  'luxembourg':'Europe',
+  'macao':'Asia-Pacific',
+  'macedonia':'Europe',
+  'macedonia, the former yugoslav republic of':'Europe',
+  'madagascar':'Middle East & Africa',
+  'malawi':'Middle East & Africa',
+  'malaysia':'Asia-Pacific',
+  'maldives':'Asia-Pacific',
+  'mali':'Middle East & Africa',
+  'malta':'Europe',
+  'marshall islands':'Asia-Pacific',
+  'martinique':'Latin America',
+  'mauritania':'Middle East & Africa',
+  'mauritius':'Middle East & Africa',
+  'mayotte':'Middle East & Africa',
+  'mexico':'Latin America',
+  'micronesia':'Asia-Pacific',
+  'micronesia, federated states of':'Asia-Pacific',
+  'moldova':'Europe',
+  'moldova, republic of':'Europe',
+  'monaco':'Europe',
+  'mongolia':'Asia-Pacific',
+  'montenegro':'Europe',
+  'morocco':'Middle East & Africa',
+  'mozambique':'Middle East & Africa',
+  'myanmar':'Asia-Pacific',
+  'namibia':'Middle East & Africa',
+  'nepal':'Asia-Pacific',
+  'netherlands':'Europe',
+  'netherlands antilles':'Latin America',
+  'new caledonia':'Asia-Pacific',
+  'new zealand':'Asia-Pacific',
+  'nicaragua':'Latin America',
+  'niger':'Middle East & Africa',
+  'nigeria':'Middle East & Africa',
+  'north korea':'Asia-Pacific',
+  'north macedonia':'Europe',
+  'norway':'Europe',
+  'oman':'Middle East & Africa',
+  'pakistan':'Asia-Pacific',
+  'palau':'Asia-Pacific',
+  'palestine':'Middle East & Africa',
+  'palestine, state of':'Middle East & Africa',
+  'panama':'Latin America',
+  'papua new guinea':'Asia-Pacific',
+  'paraguay':'Latin America',
+  'peru':'Latin America',
+  'philippines':'Asia-Pacific',
+  'pitcairn':'Asia-Pacific',
+  'poland':'Europe',
+  'portugal':'Europe',
+  'puerto rico':'Latin America',
+  'qatar':'Middle East & Africa',
+  'republic of the congo':'Middle East & Africa',
+  'romania':'Europe',
+  'russia':'Europe',
+  'russian federation':'Europe',
+  'rwanda':'Middle East & Africa',
+  'réunion':'Middle East & Africa',
+  'saint kitts and nevis':'Latin America',
+  'saint lucia':'Latin America',
+  'saint martin':'Latin America',
+  'saint vincent and the grenadines':'Latin America',
+  'samoa':'Asia-Pacific',
+  'san marino':'Europe',
+  'sao tome and principe':'Middle East & Africa',
+  'saudi arabia':'Middle East & Africa',
+  'senegal':'Middle East & Africa',
+  'serbia':'Europe',
+  'seychelles':'Middle East & Africa',
+  'sierra leone':'Middle East & Africa',
+  'singapore':'Asia-Pacific',
+  'slovakia':'Europe',
+  'slovenia':'Europe',
+  'solomon islands':'Asia-Pacific',
+  'somalia':'Middle East & Africa',
+  'south africa':'Middle East & Africa',
+  'south georgia and the south sandwich islands':'Latin America',
+  'south korea':'Asia-Pacific',
+  'south sudan':'Middle East & Africa',
+  'spain':'Europe',
+  'sri lanka':'Asia-Pacific',
+  'sudan':'Middle East & Africa',
+  'suriname':'Latin America',
+  'swaziland':'Middle East & Africa',
+  'sweden':'Europe',
+  'switzerland':'Europe',
+  'syria':'Middle East & Africa',
+  'syrian arab republic':'Middle East & Africa',
+  'taiwan':'Asia-Pacific',
+  'taiwan, republic of china':'Asia-Pacific',
+  'tajikistan':'Asia-Pacific',
+  'tanzania':'Middle East & Africa',
+  'tanzania, united republic of':'Middle East & Africa',
+  'thailand':'Asia-Pacific',
+  'timor-leste':'Asia-Pacific',
+  'togo':'Middle East & Africa',
+  'tonga':'Asia-Pacific',
+  'trinidad and tobago':'Latin America',
+  'tunisia':'Middle East & Africa',
+  'turkey':'Middle East & Africa',
+  'turkmenistan':'Asia-Pacific',
+  'turks and caicos islands':'Latin America',
+  'uganda':'Middle East & Africa',
+  'uk':'Europe',
+  'ukraine':'Europe',
+  'united arab emirates':'Middle East & Africa',
+  'united kingdom':'Europe',
+  'united states':'North America',
+  'united states of america':'North America',
+  'uruguay':'Latin America',
+  'us':'North America',
+  'usa':'North America',
+  'uzbekistan':'Asia-Pacific',
+  'vanuatu':'Asia-Pacific',
+  'venezuela':'Latin America',
+  'venezuela, bolivarian republic of':'Latin America',
+  'viet nam':'Asia-Pacific',
+  'vietnam':'Asia-Pacific',
+  'vietnam, socialist republic of':'Asia-Pacific',
+  'virgin islands, british':'Latin America',
+  'virgin islands, u.s.':'Latin America',
+  'yemen':'Middle East & Africa',
+  'zambia':'Middle East & Africa',
+  'zimbabwe':'Middle East & Africa',
+  'åland islands':'Europe',
+};
+const REGION_ORDER = ['North America','Europe','Latin America','Asia-Pacific','Middle East & Africa','Other / Unmapped'];
+function regionOf(country){
+  const c = (country||'').trim().toLowerCase();
+  if(!c) return 'Other / Unmapped';
+  return COUNTRY_REGION[c] || 'Other / Unmapped';
+}
+
+
+function buildFieldMap(headers, aliases){
+  const norm = headers.map(h=>({orig:h, norm:normalizeHeader(h)}));
+  const map = {};
+  for(const [canon, list] of Object.entries(aliases)){
+    for(const a of list){
+      const found = norm.find(n=>n.norm===a);
+      if(found){ map[canon]=found.orig; break; }
+    }
+  }
+  return map;
+}
+
+function parseDate(str){
+  if(!str) return null;
+  const s = String(str).trim();
+  if(!s) return null;
+  const d = new Date(s.includes(' ') && !s.includes('T') ? s.replace(' ','T') : s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function fmtInt(n){ return Math.round(n).toLocaleString('en-US'); }
+function fmtDec(n){ return (Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtDateShort(d){ return d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}); }
+function nextDay(d){ const n = new Date(d.getTime()); n.setDate(n.getDate()+1); return n; }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ============================= state ============================= */
+const state = {
+  reg: {rows:null, fileName:null, minDate:null, maxDate:null},
+  enr: {rows:null, fileName:null, minDate:null, maxDate:null},
+  a: { type:'quarter', options:{quarter:[],year:[],month:[]}, selectedKey:{quarter:null,year:null,month:null}, customStart:null, customEnd:null },
+  b: { type:'quarter', options:{quarter:[],year:[],month:[]}, selectedKey:{quarter:null,year:null,month:null}, customStart:null, customEnd:null },
+};
+
+/* ============================= tool tabs ============================= */
+document.getElementById('tool-tabs').addEventListener('click', e=>{
+  const btn = e.target.closest('.tool-tab');
+  if(!btn) return;
+  document.querySelectorAll('.tool-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tool-section').forEach(s=>s.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tool-'+btn.dataset.tool).classList.add('active');
+});
+
+/* ============================= upload handling ============================= */
+function setupDropzone(dzId, inputId, statusId, onFile){
+  const dz = document.getElementById(dzId);
+  const input = document.getElementById(inputId);
+  dz.addEventListener('click', ()=> input.click());
+  input.addEventListener('change', e=>{ if(e.target.files[0]) onFile(e.target.files[0]); });
+  ['dragover','dragenter'].forEach(ev=> dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev=> dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', e=>{ e.preventDefault(); const f = e.dataTransfer.files[0]; if(f) onFile(f); });
+  return {dz};
+}
+
+function showUploadError(msg){
+  const box = document.getElementById('upload-error');
+  box.textContent = msg;
+  box.style.display = 'block';
+}
+function clearUploadError(){
+  const box = document.getElementById('upload-error');
+  box.style.display='none'; box.textContent='';
+}
+
+/* ============================= persistent base storage (File A) ============================= */
+/* SHARED = true: this dataset is stored once and visible to anyone who opens this app,        */
+/* on any browser — that's what makes re-upload unnecessary. It intentionally excludes names/   */
+/* emails; only learner id, registration date, and UTM fields are kept.                         */
+const STORAGE_CHUNK_ROWS = 40000;
+const SHARED = true;
+
+async function saveBaseToStorage(rows){
+  const compact = rows.map(r=>[r.id, r.createdOn.getTime(), r.source, r.medium, r.content, r.campaign, r.adAccount?1:0, r.country]);
+  const chunks = [];
+  for(let i=0;i<compact.length;i+=STORAGE_CHUNK_ROWS){ chunks.push(compact.slice(i, i+STORAGE_CHUNK_ROWS)); }
+  for(let i=0;i<chunks.length;i++){
+    await window.storage.set('reg-base-chunk-'+i, JSON.stringify(chunks[i]), SHARED);
+  }
+  // remove any leftover chunks from a previously larger dataset
+  let i = chunks.length;
+  while(true){
+    let existing;
+    try{ existing = await window.storage.get('reg-base-chunk-'+i, SHARED); } catch(e){ existing = null; }
+    if(!existing) break;
+    try{ await window.storage.delete('reg-base-chunk-'+i, SHARED); } catch(e){}
+    i++;
+  }
+  let minDate=rows[0].createdOn, maxDate=rows[0].createdOn;
+  for(const r of rows){ if(r.createdOn<minDate) minDate=r.createdOn; if(r.createdOn>maxDate) maxDate=r.createdOn; }
+  const meta = { chunkCount:chunks.length, totalRows:rows.length, minDate:minDate.getTime(), maxDate:maxDate.getTime(), savedAt:Date.now() };
+  await window.storage.set('reg-base-meta', JSON.stringify(meta), SHARED);
+  return meta;
+}
+
+async function loadBaseFromStorage(){
+  let metaRes;
+  try{ metaRes = await window.storage.get('reg-base-meta', SHARED); } catch(e){ return null; }
+  if(!metaRes) return null;
+  let meta;
+  try{ meta = JSON.parse(metaRes.value); } catch(e){ return null; }
+  const rows = [];
+  for(let i=0;i<meta.chunkCount;i++){
+    try{
+      const chunkRes = await window.storage.get('reg-base-chunk-'+i, SHARED);
+      if(!chunkRes) continue;
+      const arr = JSON.parse(chunkRes.value);
+      for(const c of arr){ if(idExcluded(c[0])) continue; rows.push({id:String(c[0]), createdOn:new Date(c[1]), source:c[2]||'', medium:c[3]||'', content:c[4]||'', campaign:c[5]||'', adAccount:!!c[6], country:c[7]||''}); }
+    } catch(e){ /* skip unreadable chunk */ }
+  }
+  if(!rows.length) return null;
+  return {rows, meta};
+}
+
+async function clearBaseStorage(){
+  try{
+    const metaRes = await window.storage.get('reg-base-meta', SHARED);
+    if(metaRes){
+      const meta = JSON.parse(metaRes.value);
+      for(let i=0;i<meta.chunkCount;i++){ try{ await window.storage.delete('reg-base-chunk-'+i, SHARED); } catch(e){} }
+    }
+    await window.storage.delete('reg-base-meta', SHARED);
+  } catch(e){}
+}
+
+/* ============================= reg slot visibility (open access — no admin gate for now) ============================= */
+function updateRegSlotVisibility(){
+  const hasData = !!(state.reg.rows && state.reg.rows.length);
+
+  document.getElementById('dz-reg').style.display = 'none';
+  document.getElementById('reg-loaded-card').style.display = 'none';
+
+  if(hasData){
+    document.getElementById('reg-loaded-card').style.display = 'block';
+    renderBaseCardText();
+  } else {
+    document.getElementById('dz-reg').style.display = 'block';
+  }
+}
+
+function renderBaseCardText(){
+  document.getElementById('checklist-line').innerHTML = '<span class="chk">✓</span> TTA All Learners until '+fmtDateShort(state.reg.maxDate);
+  document.getElementById('base-coverage-line').textContent = `${state.reg.rows.length.toLocaleString()} learners on file · covering ${fmtDateShort(state.reg.minDate)} – ${fmtDateShort(state.reg.maxDate)}`;
+  document.getElementById('btn-add-batch').textContent = `Add new learner batch (from ${fmtDateShort(nextDay(state.reg.maxDate))} onward)`;
+  document.getElementById('data-range-hint-a').textContent = `data spans ${fmtDateShort(state.reg.minDate)} – ${fmtDateShort(state.reg.maxDate)}`;
+}
+
+
+function parseRegCsvFile(file){
+  return new Promise(resolve=>{
+    Papa.parse(file, {
+      header:true, skipEmptyLines:true,
+      complete: res=>{
+        const map = buildFieldMap(res.meta.fields||[], REG_ALIASES);
+        if(!map.id || !map.createdOn){
+          resolve({error:`Missing required columns — need a Users Id and a registration/created date column. Found: ${(res.meta.fields||[]).join(', ')}`});
+          return;
+        }
+        const rows = res.data.filter(r=>!rawRowExcluded(r)).map(r=>({
+          id: String(r[map.id]),
+          createdOn: parseDate(r[map.createdOn]),
+          source: map.source ? (r[map.source]||'').trim() : '',
+          medium: map.medium ? (r[map.medium]||'').trim() : '',
+          content: map.content ? (r[map.content]||'').trim() : '',
+          campaign: map.campaign ? (r[map.campaign]||'').trim() : '',
+          adAccount: map.adAccount ? !!(r[map.adAccount]||'').trim() : false,
+          country: map.country ? (r[map.country]||'').trim() : '',
+        })).filter(r=>r.id && r.createdOn && !idExcluded(r.id));
+        if(rows.length===0){ resolve({error:'Parsed 0 usable rows — check the Users Id and date columns have values.'}); return; }
+        resolve({rows});
+      },
+      error: err=>resolve({error:'Could not parse CSV: '+err.message})
+    });
+  });
+}
+
+async function handleBaseUpload(file){
+  document.getElementById('dz-reg-status').textContent = 'Parsing '+file.name+'…';
+  regUI.dz.classList.remove('error');
+  const result = await parseRegCsvFile(file);
+  if(result.error){
+    regUI.dz.classList.add('error');
+    document.getElementById('dz-reg-status').className='dz-status err';
+    document.getElementById('dz-reg-status').textContent = result.error;
+    updateRunButtons();
+    return;
+  }
+  const rows = result.rows;
+  let minDate=rows[0].createdOn, maxDate=rows[0].createdOn;
+  for(const r of rows){ if(r.createdOn<minDate) minDate=r.createdOn; if(r.createdOn>maxDate) maxDate=r.createdOn; }
+  state.reg = {rows, fileName:file.name, minDate, maxDate};
+  updateRegSlotVisibility();
+  clearUploadError();
+  initPeriod('a');
+  setupUtmFilterOptions();
+  updateRunButtons();
+  document.getElementById('base-batch-status').textContent = 'Saving to shared storage…';
+  try{
+    await saveBaseToStorage(rows);
+    document.getElementById('base-batch-status').textContent = `✓ Saved ${rows.length.toLocaleString()} learners. Anyone who opens this app will now see this data — no re-upload needed.`;
+  } catch(e){
+    document.getElementById('base-batch-status').textContent = 'Loaded for this session, but could not save to shared storage ('+(e && e.message ? e.message : e)+'). Others won\'t see this until it saves successfully.';
+  }
+}
+
+async function handleAddBatch(file){
+  const statusEl = document.getElementById('base-batch-status');
+  statusEl.textContent = 'Parsing '+file.name+'…';
+  const result = await parseRegCsvFile(file);
+  if(result.error){ statusEl.textContent = 'Error: '+result.error; return; }
+
+  const map = new Map((state.reg.rows||[]).map(r=>[r.id, r]));
+  let added=0, updated=0;
+  for(const r of result.rows){ if(map.has(r.id)) updated++; else added++; map.set(r.id, r); }
+  const merged = [...map.values()];
+  let minDate=merged[0].createdOn, maxDate=merged[0].createdOn;
+  for(const r of merged){ if(r.createdOn<minDate) minDate=r.createdOn; if(r.createdOn>maxDate) maxDate=r.createdOn; }
+  state.reg = {rows:merged, fileName:'base + batches', minDate, maxDate};
+  updateRegSlotVisibility();
+  initPeriod('a');
+  setupUtmFilterOptions();
+  updateRunButtons();
+
+  statusEl.textContent = `Saving ${merged.length.toLocaleString()} learners…`;
+  try{
+    await saveBaseToStorage(merged);
+    statusEl.textContent = `✓ Added ${added.toLocaleString()} new learner(s)${updated?(', updated '+updated.toLocaleString()+' existing'):''}. Saved for everyone.`;
+  } catch(e){
+    statusEl.textContent = 'Merged for this session, but failed to save to shared storage ('+(e && e.message ? e.message : e)+').';
+  }
+}
+
+const regUI = setupDropzone('dz-reg','file-reg','dz-reg-status', handleBaseUpload);
+const enrUI = setupDropzone('dz-enr','file-enr','dz-enr-status', handleEnrFile);
+document.getElementById('btn-add-batch').addEventListener('click', ()=> document.getElementById('file-batch').click());
+document.getElementById('file-batch').addEventListener('change', e=>{ if(e.target.files[0]) handleAddBatch(e.target.files[0]); e.target.value=''; });
+document.getElementById('btn-replace-base').addEventListener('click', ()=>{
+  if(confirm('This replaces the entire shared dataset for everyone who uses this app. Continue?')) document.getElementById('file-replace').click();
+});
+document.getElementById('file-replace').addEventListener('change', e=>{ if(e.target.files[0]) handleBaseUpload(e.target.files[0]); e.target.value=''; });
+document.getElementById('btn-clear-base').addEventListener('click', async ()=>{
+  if(!confirm('This removes the shared historical dataset for everyone who uses this app. Continue?')) return;
+  await clearBaseStorage();
+  state.reg = {rows:null, fileName:null, minDate:null, maxDate:null};
+  updateRegSlotVisibility();
+  document.getElementById('results-a').style.display='none';
+  updateRunButtons();
+});
+
+function handleEnrFile(file){
+  Papa.parse(file, {
+    header:true, skipEmptyLines:true,
+    complete: res=>{
+      const map = buildFieldMap(res.meta.fields||[], ENR_ALIASES);
+      if(!map.id){
+        enrUI.dz.classList.add('error'); enrUI.dz.classList.remove('loaded');
+        document.getElementById('dz-enr-status').className='dz-status err';
+        document.getElementById('dz-enr-status').textContent = `Missing required Users Id column. Found: ${(res.meta.fields||[]).join(', ')}`;
+        state.enr.rows=null; updateRunButtons();
+        return;
+      }
+      const rows = res.data.filter(r=>!rawRowExcluded(r)).map(r=>({
+        id: r[map.id],
+        enrolledOn: map.enrolledOn ? parseDate(r[map.enrolledOn]) : null,
+        activity: map.activity ? (r[map.activity]||'').trim() : '',
+      })).filter(r=>r.id && !idExcluded(r.id));
+
+      if(rows.length===0){
+        enrUI.dz.classList.add('error');
+        document.getElementById('dz-enr-status').className='dz-status err';
+        document.getElementById('dz-enr-status').textContent = 'Parsed 0 usable rows — check the Users Id column has values.';
+        state.enr.rows=null; updateRunButtons();
+        return;
+      }
+
+      const withDates = rows.filter(r=>r.enrolledOn);
+      let minDate=null, maxDate=null;
+      if(withDates.length){
+        minDate = withDates[0].enrolledOn; maxDate = withDates[0].enrolledOn;
+        for(const r of withDates){ if(r.enrolledOn<minDate) minDate=r.enrolledOn; if(r.enrolledOn>maxDate) maxDate=r.enrolledOn; }
+      }
+
+      state.enr = {rows, fileName:file.name, minDate, maxDate};
+      enrUI.dz.classList.remove('error'); enrUI.dz.classList.add('loaded');
+      document.getElementById('dz-enr-status').className='dz-status ok';
+      document.getElementById('dz-enr-status').textContent = `✓ ${file.name} — ${rows.length.toLocaleString()} enrollment rows loaded` + (withDates.length ? '' : ' (no "Enrolled On" date found — Tool B needs this column)');
+      clearUploadError();
+      if(minDate){
+        document.getElementById('data-range-hint-b').textContent = `data spans ${fmtDateShort(minDate)} – ${fmtDateShort(maxDate)}`;
+        initPeriod('b');
+      } else {
+        document.getElementById('data-range-hint-b').textContent = `no enrollment date column found`;
+      }
+      updateRunButtons();
+    },
+    error: err=>{ showUploadError('Could not parse enrollments CSV: '+err.message); }
+  });
+}
+
+/* ============================= period controls (shared logic for A + B) ============================= */
+function getQuarterOf(d){ return Math.floor(d.getMonth()/3)+1; }
+function quarterRange(y,q){ const sm=(q-1)*3; return {start:new Date(y,sm,1,0,0,0,0), end:new Date(y,sm+3,0,23,59,59,999)}; }
+function yearRange(y){ return {start:new Date(y,0,1,0,0,0,0), end:new Date(y,11,31,23,59,59,999)}; }
+function monthRange(y,m){ return {start:new Date(y,m,1,0,0,0,0), end:new Date(y,m+1,0,23,59,59,999)}; }
+
+function buildPeriodOptionsFor(minDate, maxDate){
+  const now = new Date();
+
+  const qOpts=[];
+  let y=minDate.getFullYear(), q=getQuarterOf(minDate);
+  const endY=maxDate.getFullYear(), endQ=getQuarterOf(maxDate);
+  while(y<endY || (y===endY && q<=endQ)){
+    const {start,end}=quarterRange(y,q);
+    let label = y+' Q'+q;
+    if(now>=start && now<=end) label += ' (to date)';
+    qOpts.push({key:y+'-Q'+q, label, start, end});
+    q++; if(q>4){q=1;y++;}
+  }
+  qOpts.reverse();
+
+  const yOpts=[];
+  for(let yr=maxDate.getFullYear(); yr>=minDate.getFullYear(); yr--){
+    const {start,end}=yearRange(yr);
+    let label = String(yr);
+    if(now>=start && now<=end) label += ' (to date)';
+    yOpts.push({key:String(yr), label, start, end});
+  }
+
+  const mOpts=[];
+  let my=minDate.getFullYear(), mm=minDate.getMonth();
+  const emy=maxDate.getFullYear(), emm=maxDate.getMonth();
+  while(my<emy || (my===emy && mm<=emm)){
+    const {start,end}=monthRange(my,mm);
+    let label = start.toLocaleDateString('en-US',{year:'numeric',month:'long'});
+    if(now>=start && now<=end) label += ' (to date)';
+    mOpts.push({key:my+'-'+mm, label, start, end});
+    mm++; if(mm>11){mm=0;my++;}
+  }
+  mOpts.reverse();
+
+  return {quarter:qOpts, year:yOpts, month:mOpts};
+}
+
+function initPeriod(which){
+  const src = which==='a' ? state.reg : state.enr;
+  if(!src.minDate || !src.maxDate) return;
+  const opts = buildPeriodOptionsFor(src.minDate, src.maxDate);
+  const s = state[which];
+  s.options = opts;
+  s.selectedKey.quarter = opts.quarter[0] ? opts.quarter[0].key : null;
+  s.selectedKey.year = opts.year[0] ? opts.year[0].key : null;
+  s.selectedKey.month = opts.month[0] ? opts.month[0].key : null;
+  s.customStart = src.minDate;
+  s.customEnd = src.maxDate;
+  renderPeriodControls(which);
+}
+
+function renderPeriodControls(which){
+  const el = document.getElementById('period-controls-'+which);
+  const s = state[which];
+  const type = s.type;
+  const src = which==='a' ? state.reg : state.enr;
+  const sourceLabel = which==='a' ? 'File A' : 'File B';
+
+  if(!src.minDate){
+    el.innerHTML = `<select disabled><option>Upload ${sourceLabel} first</option></select>`;
+    return;
+  }
+  if(type==='custom'){
+    const sVal = s.customStart.toISOString().slice(0,10);
+    const eVal = s.customEnd.toISOString().slice(0,10);
+    el.innerHTML = `
+      <label style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--text-faint);">FROM
+        <input type="date" id="date-start-${which}" value="${sVal}">
+      </label>
+      <label style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--text-faint);">TO
+        <input type="date" id="date-end-${which}" value="${eVal}">
+      </label>`;
+    document.getElementById('date-start-'+which).addEventListener('change', e=>{ s.customStart = new Date(e.target.value+'T00:00:00'); });
+    document.getElementById('date-end-'+which).addEventListener('change', e=>{ s.customEnd = new Date(e.target.value+'T23:59:59'); });
+    return;
+  }
+  const opts = s.options[type];
+  const selectId = 'sel-'+which+'-'+type;
+  el.innerHTML = `<select id="${selectId}">${opts.map(o=>`<option value="${o.key}">${o.label}</option>`).join('')}</select>`;
+  document.getElementById(selectId).addEventListener('change', e=>{ s.selectedKey[type]=e.target.value; });
+}
+
+function currentPeriodBounds(which){
+  const s = state[which];
+  if(s.type==='custom') return {start:s.customStart, end:s.customEnd, label:'Custom: '+fmtDateShort(s.customStart)+' – '+fmtDateShort(s.customEnd)};
+  const key = s.selectedKey[s.type];
+  const opt = s.options[s.type].find(o=>o.key===key);
+  if(!opt) return null;
+  return {start:opt.start, end:opt.end, label:opt.label};
+}
+
+document.getElementById('period-seg-a').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  [...document.getElementById('period-seg-a').children].forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  state.a.type = btn.dataset.type;
+  renderPeriodControls('a');
+});
+document.getElementById('period-seg-b').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  [...document.getElementById('period-seg-b').children].forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  state.b.type = btn.dataset.type;
+  renderPeriodControls('b');
+});
+
+document.getElementById('toggle-untagged-a').addEventListener('click', function(){ this.classList.toggle('on'); });
+
+/* ============================= UTM filter (Tool B) ============================= */
+function setupUtmFilterOptions(){
+  const dimSel = document.getElementById('utm-dim-b');
+  const valInput = document.getElementById('utm-value-b');
+  function populate(){
+    const dim = dimSel.value;
+    valInput.value = '';
+    if(!dim || !state.reg.rows){ valInput.disabled = true; document.getElementById('utm-values-b').innerHTML=''; return; }
+    valInput.disabled = false;
+    const counts = new Map();
+    for(const r of state.reg.rows){
+      const v = (r[dim]||'').trim();
+      if(!v) continue;
+      counts.set(v, (counts.get(v)||0)+1);
+    }
+    const sorted = [...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,300);
+    document.getElementById('utm-values-b').innerHTML = sorted.map(([v])=>`<option value="${escapeHtml(v)}">`).join('');
+  }
+  dimSel.onchange = populate;
+  populate();
+}
+
+/* ============================= run buttons ============================= */
+function updateRunButtons(){
+  document.getElementById('btn-run-a').disabled = !(state.reg.rows && state.enr.rows);
+  document.getElementById('btn-run-b').disabled = !(state.reg.rows && state.enr.rows && state.enr.minDate);
+  const askReady = !!(state.reg.rows && state.reg.rows.length);
+  document.getElementById('btn-ask').disabled = !askReady;
+  const hintC = document.getElementById('data-range-hint-c');
+  if(hintC){
+    hintC.textContent = askReady
+      ? `${state.reg.rows.length.toLocaleString()} learners loaded${state.enr.rows ? ' · enrollments loaded' : ' · enrollments not loaded'}`
+      : 'upload files to enable';
+  }
+}
+document.getElementById('btn-reset').addEventListener('click', ()=>{ location.reload(); });
+document.getElementById('btn-run-a').addEventListener('click', runAnalysisA);
+document.getElementById('btn-run-b').addEventListener('click', runAnalysisB);
+
+/* ============================= Tool C · Ask Anything ============================= */
+document.getElementById('results-c').style.display = 'none';
+let __lastAskTable = null;
+
+function askTopValues(rows, field, limit){
+  const m = new Map();
+  for(const r of rows){ const v=((r[field]||'')+'').trim() || '(none)'; m.set(v,(m.get(v)||0)+1); }
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,limit).map(([value,count])=>({value,count}));
+}
+
+function buildAskSchema(){
+  const reg = state.reg.rows || [];
+  const enr = state.enr.rows || [];
+  return {
+    registrations: {
+      rowCount: reg.length,
+      dateRange: reg.length ? [fmtDateShort(state.reg.minDate), fmtDateShort(state.reg.maxDate)] : null,
+      fields: {
+        id: 'string (email — DO NOT output raw values; aggregate only)',
+        createdOn: 'Date (registration date)',
+        source: 'string (utm_source)', medium: 'string (utm_medium)',
+        content: 'string (utm_content)', campaign: 'string (utm_campaign)',
+        adAccount: 'boolean (TikTok ad account connected)',
+        country: 'string'
+      },
+      topSource: askTopValues(reg,'source',12),
+      topMedium: askTopValues(reg,'medium',12),
+      topCampaign: askTopValues(reg,'campaign',12),
+      topContent: askTopValues(reg,'content',12),
+      topCountry: askTopValues(reg,'country',15),
+    },
+    enrollments: enr.length ? {
+      rowCount: enr.length,
+      fields: { id:'string (matches registrations.id)', enrolledOn:'Date|null', activity:'string (content / activity name)' },
+      topActivity: askTopValues(enr,'activity',18),
+    } : 'NOT LOADED',
+  };
+}
+
+function buildAskHelpers(){
+  const enr = state.enr.rows || [];
+  const enrCountById = new Map();
+  const enrByLearner = new Map();
+  for(const e of enr){
+    enrCountById.set(e.id, (enrCountById.get(e.id)||0)+1);
+    if(!enrByLearner.has(e.id)) enrByLearner.set(e.id, []);
+    enrByLearner.get(e.id).push(e);
+  }
+  return {
+    regionOf, REGION_ORDER,
+    enrollmentCount: id => enrCountById.get(id) || 0,
+    enrCountById, enrByLearner,
+    fmtInt, fmtDec, fmtDateShort,
+  };
+}
+
+const ASK_SYSTEM = [
+  'You are a precise data analyst embedded in a browser tool. You answer questions by writing the BODY of a JavaScript function (reg, enr, H) that computes the answer from two in-memory arrays. You never see raw data — only the schema and top values provided.',
+  '',
+  'Return ONLY a single JSON object (no markdown, no backticks, no text outside JSON) with keys:',
+  '- "kind": "table" | "scalar" | "text"',
+  '- "title": short answer title (string)',
+  '- "explanation": 1-2 sentences on what was computed and any assumptions (string)',
+  '- "code": string — the BODY of function(reg, enr, H) that MUST return a result object. Escape newlines as \\n.',
+  '',
+  'Result by kind:',
+  '- "table"  -> return { columns: string[], rows: (string|number)[][] }  (max 50 rows, pre-sorted)',
+  '- "scalar" -> return { value: number|string, label: string }',
+  '- "text"   -> return { text: string }',
+  '',
+  'Schema:',
+  'reg[i] = { id, createdOn:Date, source, medium, content, campaign, adAccount:boolean, country }',
+  'enr[i] = { id, enrolledOn:Date|null, activity }',
+  'Helpers:',
+  'H.regionOf(country) -> one of: North America, Europe, Latin America, Asia-Pacific, Middle East & Africa, Other / Unmapped',
+  'H.REGION_ORDER -> array of those region names',
+  'H.enrollmentCount(id) -> number of enrollment rows for that learner',
+  'H.enrCountById -> Map(id->count); H.enrByLearner -> Map(id->enr rows[])',
+  'H.fmtInt(n), H.fmtDec(n) -> optional formatters',
+  '',
+  'Rules:',
+  '- NEVER output individual learner ids or emails. Aggregate only. If asked to list individuals, return kind "text" explaining identifiers are not exposed, plus an aggregate.',
+  '- "enrollments per learner" = total enr rows for a learner set / number of learners in that set.',
+  '- An acquired / new learner is a row in reg; enrollment counts come from enr via H.enrollmentCount(id).',
+  '- Round ratios and percentages to 2 decimals. Sort tables by the key metric descending; cap 50 rows.',
+  '- Write defensive code: guard divide-by-zero and null dates. No network, DOM, window, or infinite loops.',
+  '- If enrollments are NOT LOADED, only answer registration-only questions; otherwise return kind "text" asking the user to upload enrollments.',
+  '- Output valid JSON only.'
+].join('\n');
+
+function setAskStatus(html){ document.getElementById('ask-status').innerHTML = html || ''; }
+
+async function runAsk(){
+  const q = document.getElementById('ask-input').value.trim();
+  if(!q) return;
+  if(!(state.reg.rows && state.reg.rows.length)) return;
+
+  const btn = document.getElementById('btn-ask');
+  btn.disabled = true;
+  setAskStatus('<span class="ask-thinking"><span class="ask-dot"></span>Analyzing…</span>');
+  const answerEl = document.getElementById('ask-answer');
+  const exportRow = document.getElementById('ask-export-row');
+  exportRow.style.display = 'none';
+  __lastAskTable = null;
+
+  const schema = buildAskSchema();
+  const userMsg = `Question: ${q}\n\nSchema and top values (JSON):\n${JSON.stringify(schema)}`;
+
+  try{
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        system: ASK_SYSTEM,
+        messages:[{ role:'user', content:userMsg }],
+      })
+    });
+    if(!response.ok){ throw new Error('API request failed ('+response.status+')'); }
+    const data = await response.json();
+    const raw = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+    let clean = raw.replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
+    const first = clean.indexOf('{'); const last = clean.lastIndexOf('}');
+    if(first>0 || last<clean.length-1){ clean = clean.slice(first, last+1); }
+    let spec;
+    try{ spec = JSON.parse(clean); }
+    catch(e){ throw new Error('Could not parse the analysis returned. Try rephrasing your question.'); }
+
+    const reg = state.reg.rows || [];
+    const enr = state.enr.rows || [];
+    const H = buildAskHelpers();
+    let result;
+    try{
+      const fn = new Function('reg','enr','H', spec.code);
+      result = fn(reg, enr, H);
+    }catch(e){
+      throw new Error('The generated analysis hit an error: '+e.message+'. Try rephrasing.');
+    }
+
+    renderAsk(q, spec, result);
+    document.getElementById('results-c').style.display = 'block';
+    document.getElementById('results-c').scrollIntoView({behavior:'smooth', block:'start'});
+  }catch(err){
+    document.getElementById('ask-chip-q').textContent = q.length>60 ? q.slice(0,60)+'…' : q;
+    answerEl.innerHTML = `<div class="ask-error">${escapeHtml(err.message||'Something went wrong.')}</div>`;
+    document.getElementById('results-c').style.display = 'block';
+  }finally{
+    setAskStatus('');
+    btn.disabled = false;
+  }
+}
+
+function renderAsk(question, spec, result){
+  document.getElementById('ask-chip-q').textContent = question.length>60 ? question.slice(0,60)+'…' : question;
+  const el = document.getElementById('ask-answer');
+  const parts = [];
+  if(spec.title){ parts.push(`<div class="ask-title">${escapeHtml(spec.title)}</div>`); }
+  if(spec.explanation){ parts.push(`<div class="ask-explain">${escapeHtml(spec.explanation)}</div>`); }
+
+  const exportRow = document.getElementById('ask-export-row');
+  exportRow.style.display = 'none';
+
+  if(result && result.columns && Array.isArray(result.rows)){
+    const cols = result.columns;
+    const rows = result.rows.slice(0,50);
+    let t = '<div class="ask-table-wrap"><table class="ask-table"><thead><tr>';
+    t += cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('');
+    t += '</tr></thead><tbody>';
+    t += rows.map(r=>'<tr>'+cols.map((c,ci)=>{
+      const v = Array.isArray(r) ? r[ci] : r[c];
+      return `<td>${escapeHtml(v==null?'':(typeof v==='number'? (Number.isInteger(v)?fmtInt(v):fmtDec(v)) : v))}</td>`;
+    }).join('')+'</tr>').join('');
+    t += '</tbody></table></div>';
+    parts.push(t);
+    __lastAskTable = {columns:cols, rows};
+    exportRow.style.display = 'flex';
+  } else if(result && (typeof result.value!=='undefined')){
+    const v = result.value;
+    const disp = typeof v==='number' ? (Number.isInteger(v)?fmtInt(v):fmtDec(v)) : escapeHtml(String(v));
+    parts.push(`<div class="ask-scalar">${disp}</div><div class="ask-scalar-label">${escapeHtml(result.label||'')}</div>`);
+  } else if(result && typeof result.text!=='undefined'){
+    parts.push(`<div class="ask-text">${escapeHtml(String(result.text))}</div>`);
+  } else {
+    parts.push(`<div class="ask-text">${escapeHtml(JSON.stringify(result,null,2))}</div>`);
+  }
+
+  if(spec.code){
+    parts.push(`<details class="ask-code"><summary>Show the analysis code</summary><pre>${escapeHtml(spec.code)}</pre></details>`);
+  }
+  el.innerHTML = parts.join('');
+}
+
+document.getElementById('btn-ask').addEventListener('click', runAsk);
+document.getElementById('ask-input').addEventListener('keydown', e=>{
+  if((e.metaKey||e.ctrlKey) && e.key==='Enter'){ e.preventDefault(); if(!document.getElementById('btn-ask').disabled) runAsk(); }
+});
+document.getElementById('ask-examples').addEventListener('click', e=>{
+  const chip = e.target.closest('.ask-chip');
+  if(!chip) return;
+  document.getElementById('ask-input').value = chip.textContent;
+  document.getElementById('ask-input').focus();
+});
+document.getElementById('btn-export-c').addEventListener('click', ()=>{
+  if(!__lastAskTable) return;
+  const esc = v => { const s = v==null?'':String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const lines = [__lastAskTable.columns.map(esc).join(',')];
+  __lastAskTable.rows.forEach(r=>{
+    const arr = Array.isArray(r) ? r : __lastAskTable.columns.map(c=>r[c]);
+    lines.push(arr.map(esc).join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ask-result.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+/* ============================= TOOL A: run + render ============================= */
+function runAnalysisA(){
+  const bounds = currentPeriodBounds('a');
+  if(!bounds){ document.getElementById('run-status-a').textContent='Pick a period first.'; return; }
+
+  const minLearners = Math.max(0, parseInt(document.getElementById('min-learners-a').value,10) || 0);
+  const includeUntagged = document.getElementById('toggle-untagged-a').classList.contains('on');
+
+  const filtered = state.reg.rows.filter(r=> r.createdOn>=bounds.start && r.createdOn<=bounds.end);
+
+  const enrCountMap = new Map();
+  for(const e of state.enr.rows){ enrCountMap.set(e.id, (enrCountMap.get(e.id)||0)+1); }
+
+  let totalEnrollments=0, enrolledLearners=0, adConnectedTotal=0;
+  for(const r of filtered){
+    r.enrollmentCount = enrCountMap.get(r.id) || 0;
+    totalEnrollments += r.enrollmentCount;
+    if(r.enrollmentCount>0) enrolledLearners++;
+    if(r.adAccount) adConnectedTotal++;
+  }
+  const learners = filtered.length;
+  const avg = learners ? totalEnrollments/learners : 0;
+  const avgEnrolledOnly = enrolledLearners ? totalEnrollments/enrolledLearners : 0;
+  const adPctOverall = learners ? adConnectedTotal/learners*100 : 0;
+
+  function computeGroups(field){
+    const map = new Map();
+    for(const r of filtered){
+      let key = (r[field]||'').trim() || '(none)';
+      if(!includeUntagged && key==='(none)') continue;
+      if(!map.has(key)) map.set(key,{learners:0,enrollments:0,adConnected:0});
+      const g = map.get(key);
+      g.learners++; g.enrollments += r.enrollmentCount;
+      if(r.adAccount) g.adConnected++;
+    }
+    let arr = Array.from(map.entries()).map(([name,g])=>({name, learners:g.learners, enrollments:g.enrollments, perLearner: g.learners? g.enrollments/g.learners : 0, adConnected:g.adConnected, adPct: g.learners? g.adConnected/g.learners*100 : 0}));
+    return arr.filter(x=>x.learners>=minLearners);
+  }
+  const topByPerLearner = arr => [...arr].sort((a,b)=> b.perLearner-a.perLearner || b.learners-a.learners).slice(0,10);
+  const topByVolume     = arr => [...arr].sort((a,b)=> b.learners-a.learners || b.perLearner-a.perLearner).slice(0,10);
+
+  const gSource   = computeGroups('source');
+  const gMedium   = computeGroups('medium');
+  const gContent  = computeGroups('content');
+  const gCampaign = computeGroups('campaign');
+
+  // Country + regional breakdown across all learners acquired in the period
+  const countryMap = new Map();
+  const regionMap = new Map();
+  for(const r of filtered){
+    let countryKey = r.country ? r.country.trim() : '';
+    if(!countryKey) countryKey = '(unknown)';
+    countryMap.set(countryKey, (countryMap.get(countryKey)||0)+1);
+    const region = regionOf(r.country);
+    regionMap.set(region, (regionMap.get(region)||0)+1);
+  }
+  const topCountries = [...countryMap.entries()]
+    .map(([name,count])=>({name,count}))
+    .sort((a,b)=>b.count-a.count)
+    .slice(0,10);
+  const regionSplit = REGION_ORDER
+    .map(name=>({name, count:regionMap.get(name)||0}))
+    .sort((a,b)=>b.count-a.count)
+    .map(r=>({...r, pct: learners ? r.count/learners*100 : 0}));
+
+  const result = {
+    label: bounds.label,
+    learners, totalEnrollments, avg, enrolledLearners, avgEnrolledOnly, adConnectedTotal, adPctOverall,
+    // Section 1 — ranked by content enrollments per learner
+    bySource: topByPerLearner(gSource), byMedium: topByPerLearner(gMedium), byContent: topByPerLearner(gContent), byCampaign: topByPerLearner(gCampaign),
+    // Section 2 — ranked by volume of new learners acquired
+    volSource: topByVolume(gSource), volMedium: topByVolume(gMedium), volContent: topByVolume(gContent), volCampaign: topByVolume(gCampaign),
+    // Section 3 — country + regional breakdown
+    topCountries, regionSplit,
+  };
+
+  window.__lastResultA = result;
+  renderResultsA(result);
+  document.getElementById('run-status-a').textContent = `Last run: ${new Date().toLocaleTimeString()}`;
+}
+
+function renderLeaderboard(containerId, rows){
+  const el = document.getElementById(containerId);
+  if(!rows.length){
+    el.innerHTML = '<div class="lb-empty">No channel meets the minimum-learner threshold for this period. Lower it in Advanced settings, or widen the date range.</div>';
+    return;
+  }
+  const maxPerLearner = Math.max(...rows.map(r=>r.perLearner), 0.001);
+  const maxLearners = Math.max(...rows.map(r=>r.learners), 1);
+  el.innerHTML = rows.map((r,i)=>`
+    <div class="lb-row">
+      <div class="lb-rank">${String(i+1).padStart(2,'0')}</div>
+      <div class="lb-main">
+        <div class="lb-name" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
+        <div class="lb-bar-track"><div class="lb-bar-fill" style="width:${(r.perLearner/maxPerLearner*100).toFixed(1)}%"></div></div>
+        <div class="lb-vol-track"><div class="lb-vol-fill" style="width:${(r.learners/maxLearners*100).toFixed(1)}%"></div></div>
+      </div>
+      <div class="lb-metrics">
+        <div class="lb-perlearner">${fmtDec(r.perLearner)}</div>
+        <div class="lb-learners">${fmtInt(r.learners)} learners</div>
+        <div class="lb-ad">${fmtDec(r.adPct)}% ad acct</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderVolumeLeaderboard(containerId, rows){
+  const el = document.getElementById(containerId);
+  if(!rows.length){
+    el.innerHTML = '<div class="lb-empty">No channel meets the minimum-learner threshold for this period. Lower it in Advanced settings, or widen the date range.</div>';
+    return;
+  }
+  const maxLearners = Math.max(...rows.map(r=>r.learners), 1);
+  const maxPerLearner = Math.max(...rows.map(r=>r.perLearner), 0.001);
+  el.innerHTML = rows.map((r,i)=>`
+    <div class="lb-row">
+      <div class="lb-rank">${String(i+1).padStart(2,'0')}</div>
+      <div class="lb-main">
+        <div class="lb-name" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
+        <div class="lb-bar-track"><div class="lb-bar-fill" style="width:${(r.learners/maxLearners*100).toFixed(1)}%"></div></div>
+        <div class="lb-vol-track"><div class="lb-vol-fill" style="width:${(r.perLearner/maxPerLearner*100).toFixed(1)}%"></div></div>
+      </div>
+      <div class="lb-metrics">
+        <div class="lb-perlearner">${fmtInt(r.learners)}</div>
+        <div class="lb-learners">${fmtDec(r.perLearner)} enr/learner</div>
+        <div class="lb-ad">${fmtDec(r.adPct)}% ad acct</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderResultsA(res){
+  document.getElementById('results-a').style.display='block';
+  document.getElementById('period-chip-a').textContent = res.label;
+  document.getElementById('kpi-learners').textContent = fmtInt(res.learners);
+  document.getElementById('kpi-learners-sub').textContent = `${fmtInt(res.enrolledLearners)} enrolled in at least one content item (${res.learners? Math.round(res.enrolledLearners/res.learners*100):0}%)`;
+  document.getElementById('kpi-enrollments').textContent = fmtInt(res.totalEnrollments);
+  document.getElementById('kpi-avg').innerHTML = fmtDec(res.avg);
+  document.getElementById('kpi-avg-sub').textContent = `${fmtDec(res.avgEnrolledOnly)} among learners who enrolled in something`;
+  document.getElementById('kpi-adaccount').innerHTML = `${fmtDec(res.adPctOverall)}<span class="unit">%</span>`;
+  document.getElementById('kpi-adaccount-sub').textContent = `${fmtInt(res.adConnectedTotal)} of ${fmtInt(res.learners)} acquired learners have an ad account connected`;
+
+  // Section 1 — Quantity: Top 10 by volume of new learners acquired
+  renderVolumeLeaderboard('lb-vol-source', res.volSource);
+  renderVolumeLeaderboard('lb-vol-medium', res.volMedium);
+  renderVolumeLeaderboard('lb-vol-content', res.volContent);
+  renderVolumeLeaderboard('lb-vol-campaign', res.volCampaign);
+
+  // Section 2 — Quality: Top 10 by content enrollment / learner
+  renderLeaderboard('lb-source', res.bySource);
+  renderLeaderboard('lb-medium', res.byMedium);
+  renderLeaderboard('lb-content', res.byContent);
+  renderLeaderboard('lb-campaign', res.byCampaign);
+
+  // Section 3 — country + regional breakdown
+  renderCountLeaderboard('lb-a-countries', res.topCountries, 'learners', 'No country data available for this period.');
+  renderRegionSplit('lb-a-regions', res.regionSplit);
+
+  document.getElementById('results-a').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* ============================= CSV export helpers ============================= */
+/* The anchor MUST be attached to the document before .click(). In a published
+   (sandboxed) artifact, clicking a detached anchor that points at a blob: URL is
+   treated as a blocked frame navigation, which shows the "content is blocked" page.
+   Attaching it makes the browser treat it as a real download. copyCSV is a
+   guaranteed fallback that never triggers a navigation. */
+function downloadCSV(filename, text){
+  try{
+    const blob = new Blob(['\uFEFF'+text], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ if(a.parentNode) a.parentNode.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+async function copyCSV(text, btn){
+  const original = btn ? btn.textContent : '';
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    if(btn){ btn.textContent = 'Copied \u2713'; setTimeout(()=>{ btn.textContent = original; }, 1600); }
+  }catch(e){
+    if(btn){ btn.textContent = 'Copy failed'; setTimeout(()=>{ btn.textContent = original; }, 1600); }
+  }
+}
+
+function buildCsvA(){
+  const res = window.__lastResultA;
+  if(!res) return null;
+  const lines = [];
+  lines.push('Tool A: UTM Channels x Content Enrollment Per Learner');
+  lines.push('Period,'+res.label);
+  lines.push('');
+  lines.push('Metric,Value');
+  lines.push('Learners acquired,'+res.learners);
+  lines.push('Learners with >=1 enrollment,'+res.enrolledLearners);
+  lines.push('Total content enrollments,'+res.totalEnrollments);
+  lines.push('Enrollments per learner (all),'+fmtDec(res.avg));
+  lines.push('Enrollments per learner (enrolled only),'+fmtDec(res.avgEnrolledOnly));
+  lines.push('Learners with ad account connected,'+res.adConnectedTotal);
+  lines.push('% learners with ad account connected,'+fmtDec(res.adPctOverall));
+  lines.push('');
+  function block(title, rows){
+    lines.push(title);
+    lines.push('Rank,Value,Learners,Total Enrollments,Enrollments per Learner,Learners with Ad Account,% with Ad Account Connected');
+    rows.forEach((r,i)=>{
+      lines.push([i+1, '"'+r.name.replace(/"/g,'""')+'"', r.learners, r.enrollments, fmtDec(r.perLearner), r.adConnected, fmtDec(r.adPct)].join(','));
+    });
+    lines.push('');
+  }
+  lines.push('=== SECTION 1: QUANTITY — TOP 10 BY VOLUME OF NEW LEARNERS ACQUIRED ===');
+  lines.push('');
+  block('Utm Source', res.volSource);
+  block('Utm Medium', res.volMedium);
+  block('Utm Content', res.volContent);
+  block('Utm Campaign', res.volCampaign);
+  lines.push('=== SECTION 2: QUALITY — TOP 10 BY CONTENT ENROLLMENT / LEARNER ===');
+  lines.push('');
+  block('Utm Source', res.bySource);
+  block('Utm Medium', res.byMedium);
+  block('Utm Content', res.byContent);
+  block('Utm Campaign', res.byCampaign);
+  lines.push('=== SECTION 3: TOP 10 COUNTRY ANALYSIS & REGIONAL BREAKDOWN ===');
+  lines.push('');
+  lines.push('Top Countries (by learners acquired)');
+  lines.push('Rank,Country,Learners');
+  res.topCountries.forEach((r,i)=>{
+    lines.push([i+1, '"'+r.name.replace(/"/g,'""')+'"', r.count].join(','));
+  });
+  lines.push('');
+  lines.push('Regional Breakdown');
+  lines.push('Region,Learners,% of Acquired');
+  res.regionSplit.forEach(r=>{
+    lines.push(['"'+r.name.replace(/"/g,'""')+'"', r.count, fmtDec(r.pct)].join(','));
+  });
+  lines.push('');
+  return lines.join('\n');
+}
+
+document.getElementById('btn-export-a').addEventListener('click', ()=>{
+  const res = window.__lastResultA;
+  const csv = buildCsvA();
+  if(csv==null) return;
+  downloadCSV('tool-a-channels-enrollment_'+res.label.replace(/[^a-z0-9]+/gi,'-')+'.csv', csv);
+});
+document.getElementById('btn-copy-a').addEventListener('click', (e)=>{
+  const csv = buildCsvA();
+  if(csv==null) return;
+  copyCSV(csv, e.currentTarget);
+});
+
+/* ============================= TOOL B: run + render ============================= */
+function runAnalysisB(){
+  const bounds = currentPeriodBounds('b');
+  if(!bounds){ document.getElementById('run-status-b').textContent='Pick a period first.'; return; }
+
+  const dim = document.getElementById('utm-dim-b').value;
+  const filterValRaw = document.getElementById('utm-value-b').value.trim();
+  const filterVal = filterValRaw.toLowerCase();
+
+  const enrPeriod = state.enr.rows.filter(r=> r.enrolledOn && r.enrolledOn>=bounds.start && r.enrolledOn<=bounds.end);
+  const engagedIds = new Set(enrPeriod.map(r=>r.id));
+
+  const regById = new Map(state.reg.rows.map(r=>[r.id, r]));
+
+  let candidateIds = null;
+  if(dim && filterValRaw){
+    candidateIds = new Set(state.reg.rows.filter(r=> (r[dim]||'').trim().toLowerCase()===filterVal).map(r=>r.id));
+  }
+
+  let filteredEngaged = [...engagedIds];
+  if(candidateIds) filteredEngaged = filteredEngaged.filter(id=>candidateIds.has(id));
+
+  const newIds=new Set(), retainedIds=new Set();
+  let unclassified=0;
+  for(const id of filteredEngaged){
+    const reg = regById.get(id);
+    if(!reg){ unclassified++; continue; }
+    if(reg.createdOn>=bounds.start && reg.createdOn<=bounds.end) newIds.add(id);
+    else if(reg.createdOn<bounds.start) retainedIds.add(id);
+    else unclassified++;
+  }
+
+  const newEnr = enrPeriod.filter(r=>newIds.has(r.id));
+  const retEnr = enrPeriod.filter(r=>retainedIds.has(r.id));
+  const newAvg = newIds.size ? newEnr.length/newIds.size : 0;
+  const retAvg = retainedIds.size ? retEnr.length/retainedIds.size : 0;
+
+  function groupGeoStats(idSet){
+    const total = idSet.size;
+    let withAd = 0;
+    const countryMap = new Map();
+    const regionMap = new Map();
+    for(const id of idSet){
+      const reg = regById.get(id);
+      if(!reg) continue;
+      if(reg.adAccount) withAd++;
+      const countryKey = reg.country ? reg.country.trim() : '(unknown)';
+      countryMap.set(countryKey, (countryMap.get(countryKey)||0)+1);
+      const region = regionOf(reg.country);
+      regionMap.set(region, (regionMap.get(region)||0)+1);
+    }
+    const topCountries = [...countryMap.entries()]
+      .map(([name,count])=>({name,count}))
+      .sort((a,b)=>b.count-a.count)
+      .slice(0,10);
+    const regionSplit = REGION_ORDER
+      .map(name=>({name, count:regionMap.get(name)||0}))
+      .sort((a,b)=>b.count-a.count)
+      .map(r=>({...r, pct: total ? r.count/total*100 : 0}));
+    return { adAccountPct: total ? withAd/total*100 : 0, topCountries, regionSplit };
+  }
+
+  const newGeo = groupGeoStats(newIds);
+  const retGeo = groupGeoStats(retainedIds);
+
+  function topContent(rows){
+    const map = new Map();
+    for(const r of rows){ const key = r.activity || '(untitled content)'; map.set(key,(map.get(key)||0)+1); }
+    return [...map.entries()].map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count).slice(0,10);
+  }
+
+  const result = {
+    label: bounds.label,
+    filterLabel: (dim && filterValRaw) ? (DIM_LABELS[dim]+' = "'+filterValRaw+'"') : 'All learners',
+    newCount: newIds.size, retainedCount: retainedIds.size, unclassified,
+    newAvg, retAvg,
+    newContent: topContent(newEnr), retainedContent: topContent(retEnr),
+    newAdAccountPct: newGeo.adAccountPct, retainedAdAccountPct: retGeo.adAccountPct,
+    newTopCountries: newGeo.topCountries, retainedTopCountries: retGeo.topCountries,
+    newRegionSplit: newGeo.regionSplit, retainedRegionSplit: retGeo.regionSplit,
+  };
+
+  window.__lastResultB = result;
+  renderResultsB(result);
+  document.getElementById('run-status-b').textContent = `Last run: ${new Date().toLocaleTimeString()}`;
+}
+
+function renderCountLeaderboard(containerId, rows, unitLabel, emptyMsg){
+  const el = document.getElementById(containerId);
+  if(!rows.length){
+    el.innerHTML = `<div class="lb-empty">${emptyMsg}</div>`;
+    return;
+  }
+  const max = Math.max(...rows.map(r=>r.count), 1);
+  el.innerHTML = rows.map((r,i)=>`
+    <div class="lb-row">
+      <div class="lb-rank">${String(i+1).padStart(2,'0')}</div>
+      <div class="lb-main">
+        <div class="lb-name" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
+        <div class="lb-bar-track"><div class="lb-bar-fill" style="width:${(r.count/max*100).toFixed(1)}%"></div></div>
+      </div>
+      <div class="lb-metrics">
+        <div class="lb-perlearner">${fmtInt(r.count)}</div>
+        <div class="lb-learners">${unitLabel}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderRegionSplit(containerId, rows){
+  const el = document.getElementById(containerId);
+  const total = rows.reduce((s,r)=>s+r.count,0);
+  if(!total){
+    el.innerHTML = '<div class="lb-empty">No country data available for this group.</div>';
+    return;
+  }
+  const max = Math.max(...rows.map(r=>r.count), 1);
+  el.innerHTML = rows.map(r=>`
+    <div class="lb-row" style="grid-template-columns:1fr auto;">
+      <div class="lb-main">
+        <div class="lb-name">${escapeHtml(r.name)}</div>
+        <div class="lb-bar-track"><div class="lb-bar-fill" style="width:${(r.count/max*100).toFixed(1)}%"></div></div>
+      </div>
+      <div class="lb-metrics">
+        <div class="lb-perlearner">${r.pct.toFixed(1)}%</div>
+        <div class="lb-learners">${fmtInt(r.count)} learners</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderResultsB(res){
+  document.getElementById('results-b').style.display='block';
+  document.getElementById('period-chip-b').textContent = res.label;
+  document.getElementById('filter-chip-b').textContent = res.filterLabel;
+
+  document.getElementById('kpi-new-count').textContent = fmtInt(res.newCount);
+  document.getElementById('kpi-new-sub').textContent = `${fmtDec(res.newAvg)} content enrollments / learner in this period`;
+  document.getElementById('kpi-new-adaccount').textContent = `${fmtDec(res.newAdAccountPct)}% have a TikTok Ad Account`;
+  document.getElementById('kpi-retained-count').textContent = fmtInt(res.retainedCount);
+  document.getElementById('kpi-retained-sub').textContent = `${fmtDec(res.retAvg)} content enrollments / learner in this period`;
+  document.getElementById('kpi-retained-adaccount').textContent = `${fmtDec(res.retainedAdAccountPct)}% have a TikTok Ad Account`;
+
+  const note = document.getElementById('unclassified-note');
+  if(res.unclassified>0){
+    note.style.display='block';
+    note.textContent = `${fmtInt(res.unclassified)} engaged learner(s) couldn't be classified — no matching registration record was found in File A (they likely registered before File A's coverage). Upload a fuller historical registrations export for a complete split.`;
+  } else {
+    note.style.display='none';
+  }
+
+  renderCountLeaderboard('lb-new-content', res.newContent, 'enrollments', 'No content enrollments found for this group in the selected period.');
+  renderCountLeaderboard('lb-retained-content', res.retainedContent, 'enrollments', 'No content enrollments found for this group in the selected period.');
+
+  renderCountLeaderboard('lb-new-countries', res.newTopCountries, 'learners', 'No country data available for this group.');
+  renderCountLeaderboard('lb-retained-countries', res.retainedTopCountries, 'learners', 'No country data available for this group.');
+
+  renderRegionSplit('lb-new-regions', res.newRegionSplit);
+  renderRegionSplit('lb-retained-regions', res.retainedRegionSplit);
+
+  document.getElementById('results-b').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function buildCsvB(){
+  const res = window.__lastResultB;
+  if(!res) return null;
+  const lines = [];
+  lines.push('Tool B: New vs Retained Learners');
+  lines.push('Period,'+res.label);
+  lines.push('UTM filter,'+res.filterLabel);
+  lines.push('');
+  lines.push('Metric,Value');
+  lines.push('New learners,'+res.newCount);
+  lines.push('New learners - content enrollments per learner,'+fmtDec(res.newAvg));
+  lines.push('New learners - % with TikTok Ad Account,'+fmtDec(res.newAdAccountPct));
+  lines.push('Retained learners,'+res.retainedCount);
+  lines.push('Retained learners - content enrollments per learner,'+fmtDec(res.retAvg));
+  lines.push('Retained learners - % with TikTok Ad Account,'+fmtDec(res.retainedAdAccountPct));
+  lines.push('Unclassified (no registration record found),'+res.unclassified);
+  lines.push('');
+  function block(title, rows){
+    lines.push(title);
+    lines.push('Rank,Content,Enrollments');
+    rows.forEach((r,i)=>{
+      lines.push([i+1, '"'+r.name.replace(/"/g,'""')+'"', r.count].join(','));
+    });
+    lines.push('');
+  }
+  function countryBlock(title, rows){
+    lines.push(title);
+    lines.push('Rank,Country,Learners');
+    rows.forEach((r,i)=>{
+      lines.push([i+1, '"'+r.name.replace(/"/g,'""')+'"', r.count].join(','));
+    });
+    lines.push('');
+  }
+  function regionBlock(title, rows){
+    lines.push(title);
+    lines.push('Region,Learners,% of Group');
+    rows.forEach(r=>{
+      lines.push(['"'+r.name.replace(/"/g,'""')+'"', r.count, fmtDec(r.pct)].join(','));
+    });
+    lines.push('');
+  }
+  block('Top content - New learners', res.newContent);
+  block('Top content - Retained learners', res.retainedContent);
+  countryBlock('Top countries - New learners', res.newTopCountries);
+  countryBlock('Top countries - Retained learners', res.retainedTopCountries);
+  regionBlock('Regional split - New learners', res.newRegionSplit);
+  regionBlock('Regional split - Retained learners', res.retainedRegionSplit);
+
+  return lines.join('\n');
+}
+
+document.getElementById('btn-export-b').addEventListener('click', ()=>{
+  const res = window.__lastResultB;
+  const csv = buildCsvB();
+  if(csv==null) return;
+  downloadCSV('tool-b-new-vs-retained_'+res.label.replace(/[^a-z0-9]+/gi,'-')+'.csv', csv);
+});
+document.getElementById('btn-copy-b').addEventListener('click', (e)=>{
+  const csv = buildCsvB();
+  if(csv==null) return;
+  copyCSV(csv, e.currentTarget);
+});
+
+/* ============================= PDF export (Tools A & B) ============================= */
+function getJsPDFCtor(){ return (window.jspdf && window.jspdf.jsPDF) || window.jsPDF || null; }
+
+function makeReport(){
+  const JsPDF = getJsPDFCtor();
+  if(!JsPDF) return null;
+  const doc = new JsPDF({unit:'pt', format:'a4'});
+  const M = 42, TOP = 54, BOTTOM = 44;
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const contentW = pageW - M*2;
+  const st = { doc, M, pageW, pageH, contentW, y: TOP };
+
+  function ensure(h){ if(st.y + h > pageH - BOTTOM){ doc.addPage(); st.y = TOP; } }
+  function fit(text, maxW){
+    text = String(text==null?'':text);
+    if(doc.getTextWidth(text) <= maxW) return text;
+    let t = text;
+    while(t.length>1 && doc.getTextWidth(t+'…') > maxW){ t = t.slice(0,-1); }
+    return t+'…';
+  }
+
+  st.title = (t, sub)=>{
+    doc.setTextColor(20,22,26); doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    doc.text(t, M, st.y); st.y += 20;
+    if(sub){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(110,116,126);
+      doc.splitTextToSize(sub, contentW).forEach(l=>{ doc.text(l, M, st.y); st.y += 13; }); }
+    doc.setTextColor(150,150,150); doc.setFontSize(8);
+    doc.text('Generated '+new Date().toLocaleString('en-US'), M, st.y); st.y += 8;
+    doc.setDrawColor(225,227,230); doc.line(M, st.y, pageW-M, st.y); st.y += 18;
+  };
+  st.kpis = (pairs)=>{
+    const colW = contentW/2;
+    doc.setFontSize(9);
+    for(let i=0;i<pairs.length;i+=2){
+      ensure(30);
+      for(let j=0;j<2;j++){
+        const p = pairs[i+j]; if(!p) continue;
+        const x = M + j*colW;
+        doc.setFont('helvetica','normal'); doc.setTextColor(120,126,136);
+        doc.text(fit(p[0], colW-90), x, st.y);
+        doc.setFont('helvetica','bold'); doc.setTextColor(20,22,26);
+        doc.text(String(p[1]), x+colW-14, st.y, {align:'right'});
+      }
+      st.y += 16;
+    }
+    st.y += 8;
+  };
+  st.heading = (t, accent)=>{
+    ensure(30);
+    const c = accent || [46,120,120];
+    doc.setFillColor(c[0],c[1],c[2]);
+    doc.rect(M, st.y-9, 4, 12, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(20,22,26);
+    doc.text(t, M+10, st.y); st.y += 16;
+  };
+  st.subheading = (t)=>{
+    ensure(20);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(60,66,76);
+    doc.text(t, M, st.y); st.y += 12;
+  };
+  // columns: [{label, w(fraction), align}]
+  st.table = (columns, rows)=>{
+    const widths = columns.map(c=>c.w*contentW);
+    const xs = []; let acc = M; widths.forEach(w=>{ xs.push(acc); acc += w; });
+    const rowH = 15, headH = 17;
+    const drawHead = ()=>{
+      doc.setFillColor(238,240,242); doc.rect(M, st.y-11, contentW, headH, 'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(90,96,106);
+      columns.forEach((c,ci)=>{
+        const pad = 4; const align = c.align||'left';
+        const tx = align==='right' ? xs[ci]+widths[ci]-pad : xs[ci]+pad;
+        doc.text(fit(c.label, widths[ci]-pad*2), tx, st.y, {align});
+      });
+      st.y += headH-4;
+    };
+    ensure(headH+rowH); drawHead();
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(35,38,44);
+    rows.forEach((r)=>{
+      if(st.y + rowH > pageH - BOTTOM){ doc.addPage(); st.y = TOP; drawHead();
+        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(35,38,44); }
+      columns.forEach((c,ci)=>{
+        const pad = 4; const align = c.align||'left';
+        const val = r[ci];
+        const tx = align==='right' ? xs[ci]+widths[ci]-pad : xs[ci]+pad;
+        doc.text(fit(val, widths[ci]-pad*2), tx, st.y, {align});
+      });
+      doc.setDrawColor(236,238,240); doc.line(M, st.y+4, pageW-M, st.y+4);
+      st.y += rowH;
+    });
+    st.y += 12;
+  };
+  st.save = (name)=>{
+    const n = doc.internal.getNumberOfPages();
+    for(let i=1;i<=n;i++){ doc.setPage(i);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(160,163,168);
+      doc.text('Acquisition & Retention × Content Enrollment Analyzer', M, pageH-24);
+      doc.text('Page '+i+' of '+n, pageW-M, pageH-24, {align:'right'});
+    }
+    doc.save(name);
+  };
+  return st;
+}
+
+function pdfFail(btn){
+  const old = btn.textContent; btn.textContent = 'PDF library unavailable (offline?)';
+  setTimeout(()=>{ btn.textContent = old; }, 2600);
+}
+
+function exportPdfA(btn){
+  const res = window.__lastResultA; if(!res) return;
+  const rep = makeReport(); if(!rep){ pdfFail(btn); return; }
+  rep.title('Tool A · Acquisition Channels × Enrollment Depth', 'Acquisition period: '+res.label);
+  rep.kpis([
+    ['Learners acquired', fmtInt(res.learners)],
+    ['Total content enrollments', fmtInt(res.totalEnrollments)],
+    ['Enrollments / learner (all)', fmtDec(res.avg)],
+    ['Enrollments / learner (enrolled only)', fmtDec(res.avgEnrolledOnly)],
+    ['Ad accounts connected', fmtDec(res.adPctOverall)+'%  ('+fmtInt(res.adConnectedTotal)+')'],
+  ]);
+  const volCols = [
+    {label:'#', w:0.07, align:'left'},
+    {label:'Value', w:0.45, align:'left'},
+    {label:'New learners', w:0.18, align:'right'},
+    {label:'Enr/learner', w:0.15, align:'right'},
+    {label:'% Ad', w:0.15, align:'right'},
+  ];
+  const qualCols = [
+    {label:'#', w:0.07, align:'left'},
+    {label:'Value', w:0.45, align:'left'},
+    {label:'Enr/learner', w:0.18, align:'right'},
+    {label:'Learners', w:0.15, align:'right'},
+    {label:'% Ad', w:0.15, align:'right'},
+  ];
+  const volRows = arr => arr.map((r,i)=>[String(i+1), r.name, fmtInt(r.learners), fmtDec(r.perLearner), fmtDec(r.adPct)+'%']);
+  const qualRows = arr => arr.map((r,i)=>[String(i+1), r.name, fmtDec(r.perLearner), fmtInt(r.learners), fmtDec(r.adPct)+'%']);
+
+  rep.heading('01 · Quantity — Top 10 by Volume of New Learners Acquired', [255,160,60]);
+  [['Utm Source',res.volSource],['Utm Medium',res.volMedium],['Utm Content',res.volContent],['Utm Campaign',res.volCampaign]]
+    .forEach(([lbl,arr])=>{ rep.subheading(lbl); rep.table(volCols, volRows(arr)); });
+
+  rep.heading('02 · Quality — Top 10 by Content Enrollment / Learner', [46,200,190]);
+  [['Utm Source',res.bySource],['Utm Medium',res.byMedium],['Utm Content',res.byContent],['Utm Campaign',res.byCampaign]]
+    .forEach(([lbl,arr])=>{ rep.subheading(lbl); rep.table(qualCols, qualRows(arr)); });
+
+  rep.heading('03 · Top 10 Country Analysis & Regional Breakdown', [95,224,160]);
+  rep.subheading('Top Countries (by learners)');
+  rep.table([{label:'#',w:0.1},{label:'Country',w:0.6},{label:'Learners',w:0.3,align:'right'}],
+    res.topCountries.map((r,i)=>[String(i+1), r.name, fmtInt(r.count)]));
+  rep.subheading('Regional Breakdown');
+  rep.table([{label:'Region',w:0.55},{label:'Learners',w:0.25,align:'right'},{label:'% of Acquired',w:0.2,align:'right'}],
+    res.regionSplit.map(r=>[r.name, fmtInt(r.count), fmtDec(r.pct)+'%']));
+
+  rep.save('tool-a-report_'+res.label.replace(/[^a-z0-9]+/gi,'-')+'.pdf');
+}
+
+function exportPdfB(btn){
+  const res = window.__lastResultB; if(!res) return;
+  const rep = makeReport(); if(!rep){ pdfFail(btn); return; }
+  rep.title('Tool B · New vs Retained Learners', 'Enrollment period: '+res.label+'    UTM filter: '+res.filterLabel);
+  rep.kpis([
+    ['New learners', fmtInt(res.newCount)],
+    ['Retained learners', fmtInt(res.retainedCount)],
+    ['New · enrollments / learner', fmtDec(res.newAvg)],
+    ['Retained · enrollments / learner', fmtDec(res.retAvg)],
+    ['New · % with ad account', fmtDec(res.newAdAccountPct)+'%'],
+    ['Retained · % with ad account', fmtDec(res.retainedAdAccountPct)+'%'],
+    ['Unclassified (no reg. record)', fmtInt(res.unclassified)],
+  ]);
+  const contentCols = [{label:'#',w:0.1},{label:'Content',w:0.65},{label:'Enrollments',w:0.25,align:'right'}];
+  const countryCols = [{label:'#',w:0.1},{label:'Country',w:0.6},{label:'Learners',w:0.3,align:'right'}];
+  const regionCols  = [{label:'Region',w:0.55},{label:'Learners',w:0.25,align:'right'},{label:'% of Group',w:0.2,align:'right'}];
+  const cRows = arr => arr.map((r,i)=>[String(i+1), r.name, fmtInt(r.count)]);
+  const rRows = arr => arr.map(r=>[r.name, fmtInt(r.count), fmtDec(r.pct)+'%']);
+
+  rep.heading('New learners', [46,200,190]);
+  rep.subheading('Top content'); rep.table(contentCols, cRows(res.newContent));
+  rep.subheading('Top countries'); rep.table(countryCols, cRows(res.newTopCountries));
+  rep.subheading('Regional split'); rep.table(regionCols, rRows(res.newRegionSplit));
+
+  rep.heading('Retained learners', [255,160,60]);
+  rep.subheading('Top content'); rep.table(contentCols, cRows(res.retainedContent));
+  rep.subheading('Top countries'); rep.table(countryCols, cRows(res.retainedTopCountries));
+  rep.subheading('Regional split'); rep.table(regionCols, rRows(res.retainedRegionSplit));
+
+  rep.save('tool-b-report_'+res.label.replace(/[^a-z0-9]+/gi,'-')+'.pdf');
+}
+
+document.getElementById('btn-pdf-a').addEventListener('click', e=> exportPdfA(e.currentTarget));
+document.getElementById('btn-pdf-b').addEventListener('click', e=> exportPdfB(e.currentTarget));
+
+/* ============================= app init ============================= */
+(async function init(){
+  document.getElementById('dz-reg-status').textContent = 'Checking for shared data…';
+  try{
+    const loaded = await loadBaseFromStorage();
+    if(loaded){
+      state.reg = {rows:loaded.rows, fileName:'stored base', minDate:new Date(loaded.meta.minDate), maxDate:new Date(loaded.meta.maxDate)};
+      initPeriod('a');
+      setupUtmFilterOptions();
+    }
+  } catch(e){ /* no stored data yet — locked placeholder will show */ }
+  updateRegSlotVisibility();
+  updateRunButtons();
+})();
+</script>
+</body>
+</html>
